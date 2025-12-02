@@ -1,26 +1,29 @@
-// index.js
+// index.js - API HealthyU
+
 const express = require("express");
 const cors = require("cors");
+
 const app = express();
 
-// ====== Rutas ======
-const authRoutes = require("./routes/auth");
-const blogRoutes = require("./routes/blog");
-
-// ====== Middlewares ======
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ====== Rutas base ======
-app.use("/api/auth", authRoutes);   // 👈 IMPORTANTE
-app.use("/api/blog", blogRoutes);   // esto ya te funciona
+// Rutas
+const authRoutes = require("./routes/auth");
+const blogRoutes = require("./routes/blog");
 
-// Ruta simple para comprobar que la API vive
+app.use("/api/auth", authRoutes);
+app.use("/api/blog", blogRoutes);
+
+// Ruta básica
 app.get("/", (req, res) => {
-  res.json({ mensaje: "API HealthyU OK" });
+  res.json({ mensaje: "API HealthyU funcionando correctamente 🚀" });
 });
 
-const PORT = 4000;
+// Puerto de escucha
+const PORT = process.env.PORT || 4000;
+
 app.listen(PORT, () => {
   console.log(`✅ API HealthyU escuchando en el puerto ${PORT}`);
 });
