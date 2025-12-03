@@ -34,9 +34,16 @@ function estaLogueado() {
 }
 
 function logout() {
+  // borrar usuario de sesión
   localStorage.removeItem(CLAVE_USUARIO);
+
+  // refrescar elementos de la barra de navegación
+  actualizarNavAuth();
+
+  // volver al inicio
   window.location.href = "index.html";
 }
+
 
 
 // ================= TEMA CLARO / OSCURO =================

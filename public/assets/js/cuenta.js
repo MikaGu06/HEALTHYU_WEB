@@ -1,17 +1,18 @@
-// Lógica específica de la página "Mi cuenta"
+// cuenta.js  – lógica específica de Mi Cuenta
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (typeof iniciarTema === "function") iniciarTema();
-  if (typeof actualizarNavAuth === "function") actualizarNavAuth();
+  // Tema + nav global
+  iniciarTema();
+  actualizarNavAuth();
 
-  const usuario = typeof obtenerUsuario === "function" ? obtenerUsuario() : null;
-
+  const usuario = obtenerUsuario();
   if (!usuario) {
     alert("Debes iniciar sesión para acceder a Mi Cuenta.");
     window.location.href = "index.html";
     return;
   }
 
+  // Rellenar datos de acceso
   const campoNombreUsuario = document.getElementById("campoNombreUsuario");
   const campoEstado = document.getElementById("campoEstado");
 
@@ -25,20 +26,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let perfilCompleto = false;
 
-  function actualizarEstadoPerfil() {
-    const idsObligatorios = [
-      "campoNombreCompleto",
-      "campoCorreo",
-      "campoCelular",
-      "campoFechaNac",
-      "campoDireccion",
-      "campoSexo",
-      "campoTipoSangre",
-      "campoCiPaciente"
-      // No hay edad y el centro NO es obligatorio
-    ];
+  // ====== CAMPOS OBLIGATORIOS (sin edad y sin centro obligatorio) ======
+  const CAMPOS_OBLIGATORIOS = [
+    "campoNombreCompleto",
+    "campoCorreo",
+    "campoCelular",
+    "campoFechaNac",
+    "campoDireccion",
+    "campoSexo",
+    "campoTipoSangre",
+    "campoCiPaciente",
+  ];
 
-    perfilCompleto = idsObligatorios.every((id) => {
+  function actualizarEstadoPerfil() {
+    perfilCompleto = CAMPOS_OBLIGATORIOS.every((id) => {
       const elemento = document.getElementById(id);
       return elemento && String(elemento.value).trim() !== "";
     });
@@ -72,9 +73,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // ================== CARGAR PERFIL DESDE LA API ==================
+  // ============ CARGAR PERFIL DESDE API ============
   async function cargarPerfilDesdeAPI() {
-    const mensajePerfil = document.getElementById("mensajePerfil");
+    const avisoPerfil = document.getElementById("mensajePerfil");
 
     try {
       const respuesta = await fetch(
@@ -82,10 +83,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
 
       if (respuesta.status === 404) {
-        if (mensajePerfil) {
-          mensajePerfil.textContent =
+        if (avisoPerfil) {
+          avisoPerfil.textContent =
             "Aún no tienes datos de paciente, completa el formulario.";
-          mensajePerfil.className = "text-muted text-small";
+          avisoPerfil.className = "text-muted text-small";
         }
         actualizarEstadoPerfil();
         return;
@@ -132,24 +133,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         campoCentro.value = paciente.id_centro;
       }
 
-      if (mensajePerfil) {
-        mensajePerfil.textContent =
-          "Datos cargados desde la base de datos.";
-        mensajePerfil.className = "text-success text-small";
+      if (avisoPerfil) {
+        avisoPerfil.textContent = "Datos cargados desde la base de datos.";
+        avisoPerfil.className = "text-success text-small";
       }
 
       actualizarEstadoPerfil();
     } catch (error) {
       console.error(error);
-      if (mensajePerfil) {
-        mensajePerfil.textContent =
+      if (avisoPerfil) {
+        avisoPerfil.textContent =
           "No se pudieron cargar los datos del paciente.";
-        mensajePerfil.className = "text-danger text-small";
+        avisoPerfil.className = "text-danger text-small";
       }
     }
   }
 
-  // ================== GUARDAR PERFIL EN LA API ==================
+  // ============ GUARDAR PERFIL EN API ============
   async function guardarPerfilEnAPI(evento) {
     evento.preventDefault();
 
@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const mensajePerfil = document.getElementById("mensajePerfil");
+    const avisoPerfil = document.getElementById("mensajePerfil");
 
     const datosEnviar = {
       ci_paciente: Number(
@@ -175,8 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       sexo: Number(document.getElementById("campoSexo").value),
       id_tipo_sangre: Number(
         document.getElementById("campoTipoSangre").value
-      )
-      // Edad NO se envía; la puedes calcular en backend si quieres
+      ),
     };
 
     const campoCentro = document.getElementById("campoCentro");
@@ -190,7 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(datosEnviar)
+          body: JSON.stringify(datosEnviar),
         }
       );
 
@@ -200,24 +199,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         throw new Error(datos.mensaje || "Error al guardar los datos");
       }
 
-      if (mensajePerfil) {
-        mensajePerfil.textContent =
+      if (avisoPerfil) {
+        avisoPerfil.textContent =
           "Datos de paciente guardados correctamente en la base de datos.";
-        mensajePerfil.className = "text-success text-small";
+        avisoPerfil.className = "text-success text-small";
       }
 
       actualizarEstadoPerfil();
     } catch (error) {
       console.error(error);
-      if (mensajePerfil) {
-        mensajePerfil.textContent =
+      if (avisoPerfil) {
+        avisoPerfil.textContent =
           error.message || "No se pudieron guardar los datos.";
-        mensajePerfil.className = "text-danger text-small";
+        avisoPerfil.className = "text-danger text-small";
       }
     }
   }
 
-  // ================== CAMBIO DE CONTRASEÑA ==================
+  // ============ CAMBIO DE CONTRASEÑA ============
   async function cambiarContrasena() {
     const contrasenaActual = document
       .getElementById("campoPassActual")
@@ -263,8 +262,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         body: JSON.stringify({
           id_usuario: usuario.id_usuario,
           contrasenaActual,
-          contrasenaNueva
-        })
+          contrasenaNueva,
+        }),
       });
 
       const datos = await respuesta.json().catch(() => ({}));
@@ -293,7 +292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // ================== ELIMINAR CUENTA ==================
+  // ============ ELIMINAR CUENTA ============
   async function eliminarCuenta() {
     const confirmar = confirm(
       "Esta acción eliminará tu cuenta y no podrás volver a iniciar sesión con este usuario. ¿Deseas continuar?"
@@ -303,26 +302,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const respuesta = await fetch(
         `${API_BASE}/auth/eliminar-cuenta/${usuario.id_usuario}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+        }
       );
 
       const datos = await respuesta.json().catch(() => ({}));
 
       if (!respuesta.ok) {
-        throw new Error(
-          datos.mensaje || "No se pudo eliminar la cuenta."
-        );
+        throw new Error(datos.mensaje || "No se pudo eliminar la cuenta.");
       }
 
       alert("Tu cuenta se eliminó correctamente.");
-      if (typeof logout === "function") logout();
+      logout();
     } catch (error) {
       console.error(error);
       alert(error.message || "Error al eliminar la cuenta.");
     }
   }
 
-  // ================== INICIALIZAR EVENTOS ==================
+  // ====== INICIALIZACIÓN ======
   await cargarPerfilDesdeAPI();
   actualizarEstadoPerfil();
   bloquearNavegacionSiIncompleto();
@@ -330,10 +329,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const formularioPerfil = document.getElementById("formPerfil");
   if (formularioPerfil) {
     formularioPerfil.addEventListener("submit", guardarPerfilEnAPI);
-    formularioPerfil.querySelectorAll("input, select").forEach((elemento) => {
-      elemento.addEventListener("input", actualizarEstadoPerfil);
-      elemento.addEventListener("change", actualizarEstadoPerfil);
-    });
+    formularioPerfil
+      .querySelectorAll("input, select")
+      .forEach((elemento) => {
+        elemento.addEventListener("input", actualizarEstadoPerfil);
+        elemento.addEventListener("change", actualizarEstadoPerfil);
+      });
   }
 
   const botonCambiarPass = document.getElementById("btnCambiarPass");
