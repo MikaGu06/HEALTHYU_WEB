@@ -1,666 +1,198 @@
-// ================= CONFIGURACIÓN API =================
-const API_BASE = "http://localhost:4000/api";
-// Si más adelante publicas la API en otro dominio / puerto,
-// solo cambia esta línea, por ejemplo:
-// const API_BASE = "http://159.203.102.189:4000/api";
+// Usamos la misma base de API que en script.js
+const API_BLOG = `${API_BASE}/blog`; // Ajusta si tus rutas son diferentes
 
-// ================= UTILIDADES LOCALSTORAGE =================
+let listaPosts = [];
 
-function leerLS(clave, defecto) {
-  const dato = localStorage.getItem(clave);
-  return dato ? JSON.parse(dato) : (defecto ?? null);
+function normalizarPost(p, indice) {
+  return {
+    id: p.id || p.id_post || p.idPost || indice,
+    titulo: p.titulo || p.asunto || `Publicación ${indice + 1}`,
+    contenido: p.contenido || p.descripcion || "",
+    autor:
+      p.autor ||
+      p.nombre_autor ||
+      p.nombre_completo ||
+      p.nombre ||
+      "Autor",
+    fecha:
+      p.fecha ||
+      p.fecha_publicacion ||
+      new Date().toLocaleDateString("es-BO")
+  };
 }
 
-function guardarLS(clave, valor) {
-  localStorage.setItem(clave, JSON.stringify(valor));
-}
-
-// claves base
-const CLAVE_USUARIO = "hu_usuario";      // sesión
-const CLAVE_CARRITO = "hu_carrito";
-const CLAVE_COMPRADOR = "hu_comprador";
-const CLAVE_POSTS = "hu_posts";
-const CLAVE_NEWSLETTER = "hu_newsletter";
-
-// ================= SESIÓN / USUARIO (BACKEND) =================
-function obtenerUsuario() {
-  const raw = localStorage.getItem(CLAVE_USUARIO);
-  return raw ? JSON.parse(raw) : null;
-}
-
-function guardarUsuario(usuario) {
-  localStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
-}
-
-function estaLogueado() {
-  return !!obtenerUsuario();
-}
-
-function logout() {
-  localStorage.removeItem(CLAVE_USUARIO);
-  window.location.href = "index.html";
-}
-
-// ================= TEMA CLARO / OSCURO =================
-function aplicarTema(tema) {
-  const cuerpo = document.body;
-
-  if (tema === "dark") {
-    cuerpo.classList.add("modo-oscuro");
-  } else {
-    cuerpo.classList.remove("modo-oscuro");
+async function cargarPostsDesdeServidor() {
+  const respuesta = await fetch(`${API_BLOG}/listar`);
+  if (!respuesta.ok) {
+    throw new Error("No se pudieron cargar las publicaciones del blog.");
   }
-
-  const botonTema = document.getElementById("themeToggle");
-  if (botonTema) {
-    if (tema === "dark") {
-      botonTema.innerHTML = '<i class="bi bi-sun-fill me-1"></i> Claro';
-    } else {
-      botonTema.innerHTML = '<i class="bi bi-moon-stars-fill me-1"></i> Oscuro';
-    }
-  }
-
-  localStorage.setItem("huTema", tema);
+  const datos = await respuesta.json();
+  listaPosts = datos.map((p, i) => normalizarPost(p, i));
+  return listaPosts;
 }
 
-function iniciarTema() {
-  const guardado = localStorage.getItem("huTema") || "light";
-  aplicarTema(guardado);
-
-  const botonTema = document.getElementById("themeToggle");
-  if (botonTema) {
-    botonTema.addEventListener("click", () => {
-      const actual = localStorage.getItem("huTema") || "light";
-      aplicarTema(actual === "light" ? "dark" : "light");
-    });
-  }
-}
-
-// ================= NAVBAR: ACCEDER / MI CUENTA =================
-function actualizarNavAuth() {
-  const usuario = obtenerUsuario();
-
-  const navLogin = document.getElementById("navLogin");
-  const navCuenta = document.getElementById("navCuenta");
-  const navCerrar = document.getElementById("navCerrarSesion");
-
-  if (!navLogin || !navCuenta || !navCerrar) return;
-
-  if (usuario) {
-    navLogin.classList.add("d-none");
-    navCuenta.classList.remove("d-none");
-    navCerrar.classList.remove("d-none");
-  } else {
-    navLogin.classList.remove("d-none");
-    navCuenta.classList.add("d-none");
-    navCerrar.classList.add("d-none");
-  }
-}
-
-
-// ================== LOGIN / REGISTRO contra API ==================
-
-// LOGIN
-async function login(nombreUsuarioForzado = null, passForzado = null, silencioso = false) {
-  const usuarioInput = document.getElementById("loginUser");
-  const passInput    = document.getElementById("loginPass");
-  const msg          = document.getElementById("loginMsg");
-
-  const nombre_usuario = (nombreUsuarioForzado ?? (usuarioInput && usuarioInput.value.trim())) || "";
-  const contrasena     = (passForzado ?? (passInput && passInput.value.trim())) || "";
-
-  if (!nombre_usuario || !contrasena) {
-    if (!silencioso && msg) {
-      msg.textContent = "Completa usuario y contraseña.";
-      msg.className = "text-danger text-small";
-    }
-    return false;
-  }
+// Sobrescribimos la función mostrarPosts del script.js
+async function mostrarPosts(filtroTexto = "") {
+  const contenedor = document.getElementById("blogPosts");
+  if (!contenedor) return;
 
   try {
-    const respuesta = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre_usuario, contrasena })
-    });
-
-    const data = await respuesta.json().catch(() => ({}));
-
-    if (!respuesta.ok) {
-      if (!silencioso && msg) {
-        msg.textContent = data.mensaje || "Usuario o contraseña incorrectos.";
-        msg.className = "text-danger text-small";
-      }
-      return false;
+    if (!listaPosts.length) {
+      await cargarPostsDesdeServidor();
     }
 
-    // Se espera que la API devuelva { usuario: {...} }
-    guardarUsuario(data.usuario || { nombre_usuario });
+    const texto = filtroTexto.trim().toLowerCase();
+    const filtrados = texto
+      ? listaPosts.filter(
+          (p) =>
+            p.titulo.toLowerCase().includes(texto) ||
+            p.contenido.toLowerCase().includes(texto)
+        )
+      : listaPosts;
 
-    if (!silencioso && msg) {
-      msg.textContent = "";
-    }
-
-    actualizarNavAuth();
-
-    // Cerrar modal
-    const modalEl = document.getElementById("authModal");
-    if (!silencioso && modalEl && bootstrap?.Modal?.getInstance) {
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-    }
-
-    if (!silencioso) {
-      window.location.href = "cuenta.html";
-    }
-
-    return true;
-  } catch (err) {
-    console.error(err);
-    if (!silencioso && msg) {
-      msg.textContent = "No se pudo conectar con el servidor (API).";
-      msg.className = "text-danger text-small";
-    }
-    return false;
+    renderizarListaPosts(filtrados);
+  } catch (error) {
+    console.error(error);
+    contenedor.innerHTML =
+      '<div class="col-12"><div class="alert alert-danger">No se pudieron cargar las publicaciones del blog.</div></div>';
   }
 }
 
-// REGISTRO (usa solo datos de la tabla Usuario)
-async function register() {
-  const usuarioInput = document.getElementById("registerUser");
-  const passInput    = document.getElementById("registerPass");
-  const pass2Input   = document.getElementById("registerPass2");
-  const msg          = document.getElementById("registerMsg");
-
-  if (!usuarioInput || !passInput || !pass2Input || !msg) return;
-
-  const nombre_usuario = usuarioInput.value.trim();
-  const contrasena     = passInput.value.trim();
-  const contrasena2    = pass2Input.value.trim();
-
-  if (!nombre_usuario || !contrasena || !contrasena2) {
-    msg.textContent = "Completa todos los campos.";
-    msg.className = "text-danger text-small";
-    return;
-  }
-
-  if (contrasena !== contrasena2) {
-    msg.textContent = "Las contraseñas no coinciden.";
-    msg.className = "text-danger text-small";
-    return;
-  }
-
-  try {
-    const respuesta = await fetch(`${API_BASE}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre_usuario, contrasena })
-    });
-
-    const data = await respuesta.json().catch(() => ({}));
-
-    if (!respuesta.ok) {
-      msg.textContent = data.mensaje || "Error registrando usuario.";
-      msg.className = "text-danger text-small";
-      return;
-    }
-
-    // Intentar login automático
-    const ok = await login(nombre_usuario, contrasena, true);
-    if (ok) {
-      msg.textContent = "Cuenta creada correctamente. Redirigiendo a Mi Cuenta...";
-      msg.className = "text-success text-small";
-
-      const modalEl = document.getElementById("authModal");
-      if (modalEl && bootstrap?.Modal?.getInstance) {
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-      }
-
-      window.location.href = "cuenta.html";
-    } else {
-      msg.textContent = "Usuario creado. Inicia sesión con tus credenciales.";
-      msg.className = "text-success text-small";
-    }
-  } catch (err) {
-    console.error(err);
-    msg.textContent = "No se pudo conectar con el servidor (API).";
-    msg.className = "text-danger text-small";
-  }
-}
-
-// ================= NEWSLETTER =================
-function suscribirNewsletter() {
-  const input = document.getElementById("newsletterEmail");
-  const msg = document.getElementById("newsletterMsg");
-  if (!input || !msg) return;
-
-  const correo = input.value.trim();
-  if (!correo) {
-    msg.textContent = "Ingresa un correo válido.";
-    msg.classList.remove("text-success");
-    msg.classList.add("text-danger");
-    return;
-  }
-
-  const lista = leerLS(CLAVE_NEWSLETTER, []);
-  lista.push(correo);
-  guardarLS(CLAVE_NEWSLETTER, lista);
-
-  msg.textContent = "¡Gracias por suscribirte!";
-  msg.classList.add("text-success");
-  msg.classList.remove("text-danger");
-  input.value = "";
-}
-
-// ================= CARRITO =================
-function obtenerCarrito() {
-  return leerLS(CLAVE_CARRITO, []);
-}
-
-function guardarCarrito(carrito) {
-  guardarLS(CLAVE_CARRITO, carrito);
-}
-
-function actualizarContadorCarrito() {
-  const carrito = obtenerCarrito();
-  const total = carrito.reduce((acc, item) => acc + item.cantidad, 0);
-
-  const span1 = document.getElementById("cart-count");
-  const span2 = document.getElementById("cartCount");
-
-  if (span1) span1.textContent = total;
-  if (span2) span2.textContent = total;
-}
-
-// Página comprar.html (botones "Agregar al carrito")
-function iniciarComprar() {
-  const botones = document.querySelectorAll(".btn-add-cart");
-  if (!botones.length) return;
-
-  const mensajeDiv = document.getElementById("mensaje");
-
-  botones.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const nombre = btn.getAttribute("data-name");
-      const precio = parseFloat(btn.getAttribute("data-price") || "0");
-      const carrito = obtenerCarrito();
-
-      const encontrado = carrito.find(
-        (p) => p.nombre === nombre && p.precio === precio
-      );
-      if (encontrado) {
-        encontrado.cantidad += 1;
-      } else {
-        carrito.push({ nombre, precio, cantidad: 1 });
-      }
-
-      guardarCarrito(carrito);
-      actualizarContadorCarrito();
-
-      if (mensajeDiv) {
-        mensajeDiv.className = "alert alert-success mt-3";
-        mensajeDiv.textContent = "Producto agregado al carrito.";
-        setTimeout(() => {
-          mensajeDiv.className = "";
-          mensajeDiv.textContent = "";
-        }, 2000);
-      }
-    });
-  });
-}
-
-// ================= DATOS DEL COMPRADOR =================
-function obtenerComprador() {
-  return leerLS(CLAVE_COMPRADOR, null);
-}
-
-function guardarComprador(comprador) {
-  guardarLS(CLAVE_COMPRADOR, comprador);
-}
-
-function iniciarDatos() {
-  const formulario = document.getElementById("form-datos");
-  if (!formulario) return;
-
-  const comprador = obtenerComprador();
-  if (comprador) {
-    formulario.nombre.value = comprador.nombre || "";
-    formulario.direccion.value = comprador.direccion || "";
-    formulario.telefono.value = comprador.telefono || "";
-    formulario.correo.value = comprador.correo || "";
-    formulario.ubicacion.value = comprador.ubicacion || "";
-  }
-
-  formulario.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const datos = {
-      nombre: formulario.nombre.value.trim(),
-      direccion: formulario.direccion.value.trim(),
-      telefono: formulario.telefono.value.trim(),
-      correo: formulario.correo.value.trim(),
-      ubicacion: formulario.ubicacion.value.trim(),
-    };
-
-    guardarComprador(datos);
-    window.location.href = "pedido.html";
-  });
-}
-
-// ================= PÁGINA PEDIDO =================
-function iniciarPedido() {
-  const cuerpoTabla = document.getElementById("tabla-carrito");
-  const totalSpan = document.getElementById("total-pagar");
-  const datosDiv = document.getElementById("datos-comprador");
-  const btnFinalizar = document.getElementById("btn-finalizar");
-
-  if (!cuerpoTabla || !totalSpan) return;
-
-  function renderizarPedido() {
-    const carrito = obtenerCarrito();
-    cuerpoTabla.innerHTML = "";
-    let total = 0;
-
-    if (!carrito.length) {
-      const fila = document.createElement("tr");
-      const celda = document.createElement("td");
-      celda.colSpan = 5;
-      celda.className = "text-center";
-      celda.textContent =
-        'Tu carrito está vacío. Agrega el sistema desde "Comprar sistema".';
-      fila.appendChild(celda);
-      cuerpoTabla.appendChild(fila);
-    } else {
-      carrito.forEach((item, indice) => {
-        const fila = document.createElement("tr");
-
-        const tdNombre = document.createElement("td");
-        tdNombre.textContent = item.nombre;
-
-        const tdCantidad = document.createElement("td");
-        tdCantidad.className = "text-center";
-        tdCantidad.textContent = item.cantidad;
-
-        const tdPrecio = document.createElement("td");
-        tdPrecio.className = "text-end";
-        tdPrecio.textContent = "Bs " + item.precio.toFixed(2);
-
-        const subtotal = item.precio * item.cantidad;
-        const tdSubtotal = document.createElement("td");
-        tdSubtotal.className = "text-end";
-        tdSubtotal.textContent = "Bs " + subtotal.toFixed(2);
-        total += subtotal;
-
-        const tdAccion = document.createElement("td");
-        tdAccion.className = "text-end";
-        const botonEliminar = document.createElement("button");
-        botonEliminar.className = "btn btn-sm btn-outline-danger";
-        botonEliminar.textContent = "Eliminar";
-        botonEliminar.addEventListener("click", () => {
-          const c = obtenerCarrito();
-          c.splice(indice, 1);
-          guardarCarrito(c);
-          renderizarPedido();
-          actualizarContadorCarrito();
-        });
-        tdAccion.appendChild(botonEliminar);
-
-        fila.append(tdNombre, tdCantidad, tdPrecio, tdSubtotal, tdAccion);
-        cuerpoTabla.appendChild(fila);
-      });
-    }
-
-    totalSpan.textContent = total.toFixed(2);
-  }
-
-  renderizarPedido();
-
-  if (datosDiv) {
-    const comprador = obtenerComprador();
-    if (comprador) {
-      datosDiv.innerHTML = `
-        <p class="mb-1"><strong>Nombre:</strong> ${comprador.nombre}</p>
-        <p class="mb-1"><strong>Teléfono:</strong> ${comprador.telefono}</p>
-        <p class="mb-1"><strong>Correo:</strong> ${comprador.correo}</p>
-        <p class="mb-0"><strong>Ubicación:</strong> ${comprador.ubicacion}</p>
-      `;
-    } else {
-      datosDiv.innerHTML =
-        '<p class="text-muted">Aún no registraste tus datos. Completa el formulario en "Datos del comprador".</p>';
-    }
-  }
-
-  if (btnFinalizar) {
-    btnFinalizar.addEventListener("click", () => {
-      const carrito = obtenerCarrito();
-      if (!carrito.length) {
-        alert("Tu carrito está vacío.");
-        return;
-      }
-      alert("¡Gracias por tu compra de Healthy U!");
-      guardarCarrito([]);
-      actualizarContadorCarrito();
-      window.location.href = "index.html";
-    });
-  }
-}
-
-// ================= BLOG (LOCAL) =================
-function obtenerPosts() {
-  return leerLS(CLAVE_POSTS, []);
-}
-
-function guardarPosts(posts) {
-  guardarLS(CLAVE_POSTS, posts);
-}
-
-function renderizarListaPosts(items) {
+// Diseño tipo portada
+function renderizarListaPosts(lista) {
   const contenedor = document.getElementById("blogPosts");
   if (!contenedor) return;
 
   contenedor.innerHTML = "";
 
-  if (!items.length) {
+  if (!lista.length) {
     contenedor.innerHTML =
-      '<div class="col-12"><div class="alert alert-info">Aún no hay publicaciones. Usa el formulario de arriba para crear la primera.</div></div>';
+      '<div class="col-12"><div class="alert alert-info mb-0">No se encontraron publicaciones para ese criterio.</div></div>';
     return;
   }
 
-  items.forEach(({ post, indice }) => {
-    const col = document.createElement("div");
-    col.className = "col-md-6 col-lg-4";
+  const postsOrdenados = [...lista].reverse();
+  const principal = postsOrdenados[0];
+  const destacados = postsOrdenados.slice(1);
 
-    const tarjeta = document.createElement("div");
-    tarjeta.className = "card hu-card h-100";
+  // Columna izquierda: destacado grande
+  const colPrincipal = document.createElement("div");
+  colPrincipal.className = "col-lg-8";
 
-    const cuerpo = document.createElement("div");
-    cuerpo.className = "card-body d-flex flex-column";
+  const tarjetaPrincipal = document.createElement("article");
+  tarjetaPrincipal.className =
+    "hu-card p-4 h-100 d-flex flex-column shadow-sm";
 
-    const titulo = document.createElement("h5");
-    titulo.className = "card-title fw-bold";
-    titulo.textContent = post.titulo;
+  const etiqueta = document.createElement("p");
+  etiqueta.className =
+    "text-uppercase text-muted fw-semibold mb-1 text-small";
+  etiqueta.textContent = "Destacado";
 
-    const parrafo = document.createElement("p");
-    parrafo.className = "card-text text-muted flex-grow-1";
-    const resumen =
-      post.contenido.length > 140
-        ? post.contenido.substring(0, 140) + "…"
-        : post.contenido;
-    parrafo.textContent = resumen;
+  const titulo = document.createElement("h2");
+  titulo.className = "fw-bold mb-2";
+  titulo.textContent = principal.titulo;
+  titulo.style.cursor = "pointer";
+  titulo.addEventListener("click", () => verPost(principal.id));
 
-    const info = document.createElement("p");
-    info.className = "text-small text-muted mb-2";
-    info.textContent = `Por ${post.autor} · ${post.fecha}`;
+  const meta = document.createElement("p");
+  meta.className = "text-muted text-small mb-3";
+  meta.textContent = `Por ${principal.autor} · ${principal.fecha}`;
 
-    const botonLeer = document.createElement("button");
-    botonLeer.className = "btn btn-outline-primary btn-sm align-self-start";
-    botonLeer.textContent = "Leer más";
-    botonLeer.addEventListener("click", () => verPost(indice));
+  const resumen = document.createElement("p");
+  resumen.className = "lead mb-3";
+  const textoResumido =
+    principal.contenido.length > 260
+      ? principal.contenido.substring(0, 260) + "…"
+      : principal.contenido;
+  resumen.textContent = textoResumido;
 
-    cuerpo.append(titulo, parrafo, info, botonLeer);
-    tarjeta.appendChild(cuerpo);
-    col.appendChild(tarjeta);
-    contenedor.appendChild(col);
-  });
-}
+  const botonLeer = document.createElement("button");
+  botonLeer.className = "btn btn-primary btn-sm align-self-start";
+  botonLeer.textContent = "Leer más";
+  botonLeer.addEventListener("click", () => verPost(principal.id));
 
-function actualizarPermisosBlog() {
-  const contenedorFormulario = document.getElementById("postFormContainer");
-  const logueado = estaLogueado();
+  tarjetaPrincipal.append(etiqueta, titulo, meta, resumen, botonLeer);
+  colPrincipal.appendChild(tarjetaPrincipal);
 
-  if (contenedorFormulario) {
-    contenedorFormulario.style.display = logueado ? "block" : "none";
-  }
-}
+  // Columna derecha: recientes
+  const colLateral = document.createElement("div");
+  colLateral.className = "col-lg-4";
 
-function crearPost() {
-  const usuario = obtenerUsuario();
-  const logueado = !!usuario;
+  const encabezadoLateral = document.createElement("h3");
+  encabezadoLateral.className = "h5 fw-bold mb-3";
+  encabezadoLateral.textContent = "Artículos recientes";
 
-  if (!logueado) {
-    alert("Debes iniciar sesión para crear una publicación.");
-    return;
-  }
+  const listaLateral = document.createElement("div");
+  listaLateral.className = "d-flex flex-column gap-3";
 
-  const inputTitulo = document.getElementById("postTitulo");
-  const inputContenido = document.getElementById("postContenido");
-  if (!inputTitulo || !inputContenido) return;
+  if (!destacados.length) {
+    const aviso = document.createElement("p");
+    aviso.className = "text-muted text-small mb-0";
+    aviso.textContent =
+      "Cuando haya más publicaciones, aparecerán aquí como lista rápida.";
+    listaLateral.appendChild(aviso);
+  } else {
+    destacados.forEach((post) => {
+      const item = document.createElement("article");
+      item.className = "d-flex gap-3 align-items-start hu-card-mini";
+      item.style.cursor = "pointer";
+      item.addEventListener("click", () => verPost(post.id));
 
-  const titulo = inputTitulo.value.trim();
-  const contenido = inputContenido.value.trim();
-  if (!titulo || !contenido) return;
+      const mini = document.createElement("div");
+      mini.className = "rounded-3 bg-hu-soft flex-shrink-0";
+      mini.style.width = "90px";
+      mini.style.height = "60px";
 
-  const posts = obtenerPosts();
-  const autorNombre =
-    usuario.nombre_usuario ||
-    usuario.username ||
-    usuario.nombre ||
-    "Usuario";
+      const cuerpo = document.createElement("div");
+      const t = document.createElement("h4");
+      t.className = "h6 mb-1";
+      t.textContent = post.titulo;
 
-  const nuevo = {
-    titulo,
-    contenido,
-    autor: autorNombre,
-    fecha: new Date().toLocaleString(),
-  };
+      const m = document.createElement("p");
+      m.className = "text-muted text-small mb-0";
+      m.textContent = post.fecha;
 
-  posts.push(nuevo);
-  guardarPosts(posts);
-
-  inputTitulo.value = "";
-  inputContenido.value = "";
-  mostrarPosts();
-}
-
-function verPost(indice) {
-  const posts = obtenerPosts();
-  const post = posts[indice];
-  if (!post) return;
-
-  alert(
-    post.titulo +
-      "\n\n" +
-      post.contenido +
-      "\n\nAutor: " +
-      post.autor +
-      " · " +
-      post.fecha
-  );
-}
-
-function mostrarPosts(filtroTexto) {
-  const posts = obtenerPosts();
-  const items = [];
-
-  posts.forEach((p, idx) => {
-    if (!filtroTexto) {
-      items.push({ post: p, indice: idx });
-    } else {
-      const q = filtroTexto.toLowerCase();
-      if (
-        p.titulo.toLowerCase().includes(q) ||
-        p.contenido.toLowerCase().includes(q)
-      ) {
-        items.push({ post: p, indice: idx });
-      }
-    }
-  });
-
-  renderizarListaPosts(items);
-}
-
-function iniciarBlog() {
-  const contenedorPosts = document.getElementById("blogPosts");
-  if (!contenedorPosts) return;
-
-  const buscador = document.getElementById("blogSearch");
-
-  if (buscador) {
-    buscador.addEventListener("input", () => {
-      const texto = buscador.value.trim();
-      mostrarPosts(texto);
+      cuerpo.append(t, m);
+      item.append(mini, cuerpo);
+      listaLateral.appendChild(item);
     });
   }
 
-  actualizarPermisosBlog();
-  mostrarPosts();
+  colLateral.append(encabezadoLateral, listaLateral);
+
+  contenedor.append(colPrincipal, colLateral);
 }
 
-// ================= PERFIL / CUENTA (BÁSICO) =================
-function iniciarPerfil() {
-  const caja = document.getElementById("profileBox");
-  if (!caja) return;
+// Abre el modal con el post completo
+function verPost(id) {
+  const post = listaPosts.find((p) => p.id === id);
+  if (!post) return;
 
-  const usuario = obtenerUsuario();
+  const tituloEl = document.getElementById("modalTituloPost");
+  const metaEl = document.getElementById("modalMetaPost");
+  const contenidoEl = document.getElementById("modalContenidoPost");
+  const modalEl = document.getElementById("modalPostBlog");
 
-  const nombreEl = document.getElementById("profileUsername");
-  const correoEl = document.getElementById("profileEmail");
-  const postsEl = document.getElementById("profilePostsCount");
-  const temaEl = document.getElementById("profileTheme");
+  if (!tituloEl || !metaEl || !contenidoEl || !modalEl) return;
 
-  if (!usuario) {
-    caja.innerHTML =
-      '<div class="alert alert-warning">Debes iniciar sesión para ver tu perfil.</div>';
-    return;
-  }
+  tituloEl.textContent = post.titulo;
+  metaEl.textContent = `Por ${post.autor} · ${post.fecha}`;
 
-  const posts = obtenerPosts().filter(
-    (p) =>
-      p.autor ===
-      (usuario.nombre_usuario || usuario.username || usuario.nombre)
-  );
+  const texto = String(post.contenido || "");
+  contenidoEl.innerHTML = texto
+    .split("\n")
+    .map((linea) => `<p class="mb-2">${linea}</p>`)
+    .join("");
 
-  if (nombreEl) nombreEl.textContent =
-    usuario.nombre_usuario || usuario.username || usuario.nombre || "";
-  if (correoEl) correoEl.textContent = usuario.correo || "";
-  if (postsEl) postsEl.textContent = posts.length.toString();
-  if (temaEl)
-    temaEl.textContent =
-      localStorage.getItem("huTema") === "dark" ? "Oscuro" : "Claro";
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
 }
 
-// ================= INICIALIZACIÓN GLOBAL =================
+// Inicialización específica del blog
 document.addEventListener("DOMContentLoaded", () => {
-  iniciarTema();
-  actualizarNavAuth();
-  actualizarContadorCarrito();
-  iniciarComprar();
-  iniciarDatos();
-  iniciarPedido();
-  iniciarBlog();
-  iniciarPerfil();
+  const buscador = document.getElementById("blogSearch");
+  if (buscador) {
+    buscador.addEventListener("input", () => mostrarPosts(buscador.value));
+  }
+  mostrarPosts();
 });
-
-
-// Cerrar sesión
-function logout() {
-  localStorage.removeItem("usuario");
-  localStorage.removeItem("token");
-
-  // Refrescar navegación
-  actualizarNavAuth();
-
-  // Redirigir
-  window.location.href = "index.html";
-}

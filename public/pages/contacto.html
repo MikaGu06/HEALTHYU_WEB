@@ -16,7 +16,7 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
   />
   <!-- Estilos propios -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
   <!-- ================ BARRA DE NAVEGACIÓN (MISMA QUE INDEX) ================ -->
@@ -29,7 +29,7 @@
       <!-- Solo logo -->
       <a class="navbar-brand" href="index.html">
         <img
-          src="IMAGENES/1.png"
+          src="../IMAGENES/logo_horizontal.png"
           alt="Healthy U"
           style="max-height: 40px"
         />
@@ -74,6 +74,13 @@
           <li class="nav-item">
             <a class="nav-link active" href="contacto.html" style="color: var(--text-main);">
               <i class="bi bi-envelope me-1"></i>Contacto
+            </a>
+          </li>
+
+          <!-- ⭐ PRECIOS -->
+          <li class="nav-item">
+            <a class="nav-link" href="comprar.html" style="color: var(--text-main);">
+              <i class="bi bi-tags me-1"></i>Precios
             </a>
           </li>
         </ul>
@@ -132,9 +139,7 @@
         <div class="col-lg-7">
           <div class="hu-card p-4">
             <h2 class="h5 fw-bold mb-3">Envíanos tu consulta</h2>
-            <form
-              onsubmit="alert('Mensaje enviado (simulado para la tarea).'); this.reset(); return false;"
-            >
+            <form id="formContacto">
               <div class="mb-3">
                 <label class="form-label" for="contactoNombre">Nombre completo</label>
                 <input type="text" id="contactoNombre" class="form-control" required>
@@ -363,6 +368,7 @@
 
   <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="script.js"></script>
+  <script src="../js/script.js"></script>
+  <script src="../js/contacto.js"></script>
 </body>
 </html>

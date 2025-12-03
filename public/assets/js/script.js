@@ -1,8 +1,6 @@
 // ================= CONFIGURACIÓN API =================
 const API_BASE = "http://localhost:4000/api";
-// Si más adelante publicas la API en otro dominio / puerto,
-// solo cambia esta línea, por ejemplo:
-// const API_BASE = "http://159.203.102.189:4000/api";
+
 
 // ================= UTILIDADES LOCALSTORAGE =================
 

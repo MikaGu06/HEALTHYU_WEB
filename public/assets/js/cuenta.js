@@ -1,666 +1,348 @@
-// ================= CONFIGURACIÓN API =================
-const API_BASE = "http://localhost:4000/api";
-// Si más adelante publicas la API en otro dominio / puerto,
-// solo cambia esta línea, por ejemplo:
-// const API_BASE = "http://159.203.102.189:4000/api";
+// Lógica específica de la página "Mi cuenta"
 
-// ================= UTILIDADES LOCALSTORAGE =================
+document.addEventListener("DOMContentLoaded", async () => {
+  if (typeof iniciarTema === "function") iniciarTema();
+  if (typeof actualizarNavAuth === "function") actualizarNavAuth();
 
-function leerLS(clave, defecto) {
-  const dato = localStorage.getItem(clave);
-  return dato ? JSON.parse(dato) : (defecto ?? null);
-}
+  const usuario = typeof obtenerUsuario === "function" ? obtenerUsuario() : null;
 
-function guardarLS(clave, valor) {
-  localStorage.setItem(clave, JSON.stringify(valor));
-}
-
-// claves base
-const CLAVE_USUARIO = "hu_usuario";      // sesión
-const CLAVE_CARRITO = "hu_carrito";
-const CLAVE_COMPRADOR = "hu_comprador";
-const CLAVE_POSTS = "hu_posts";
-const CLAVE_NEWSLETTER = "hu_newsletter";
-
-// ================= SESIÓN / USUARIO (BACKEND) =================
-function obtenerUsuario() {
-  const raw = localStorage.getItem(CLAVE_USUARIO);
-  return raw ? JSON.parse(raw) : null;
-}
-
-function guardarUsuario(usuario) {
-  localStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
-}
-
-function estaLogueado() {
-  return !!obtenerUsuario();
-}
-
-function logout() {
-  localStorage.removeItem(CLAVE_USUARIO);
-  window.location.href = "index.html";
-}
-
-// ================= TEMA CLARO / OSCURO =================
-function aplicarTema(tema) {
-  const cuerpo = document.body;
-
-  if (tema === "dark") {
-    cuerpo.classList.add("modo-oscuro");
-  } else {
-    cuerpo.classList.remove("modo-oscuro");
+  if (!usuario) {
+    alert("Debes iniciar sesión para acceder a Mi Cuenta.");
+    window.location.href = "index.html";
+    return;
   }
 
-  const botonTema = document.getElementById("themeToggle");
-  if (botonTema) {
-    if (tema === "dark") {
-      botonTema.innerHTML = '<i class="bi bi-sun-fill me-1"></i> Claro';
+  const campoNombreUsuario = document.getElementById("campoNombreUsuario");
+  const campoEstado = document.getElementById("campoEstado");
+
+  if (campoNombreUsuario) {
+    campoNombreUsuario.value = usuario.nombre_usuario || "";
+  }
+  if (campoEstado) {
+    campoEstado.value =
+      usuario.estado === 0 || usuario.estado === false ? "Inactivo" : "Activo";
+  }
+
+  let perfilCompleto = false;
+
+  function actualizarEstadoPerfil() {
+    const idsObligatorios = [
+      "campoNombreCompleto",
+      "campoCorreo",
+      "campoCelular",
+      "campoFechaNac",
+      "campoDireccion",
+      "campoSexo",
+      "campoTipoSangre",
+      "campoCiPaciente"
+      // No hay edad y el centro NO es obligatorio
+    ];
+
+    perfilCompleto = idsObligatorios.every((id) => {
+      const elemento = document.getElementById(id);
+      return elemento && String(elemento.value).trim() !== "";
+    });
+
+    const aviso = document.getElementById("avisoPerfil");
+    if (!aviso) return;
+
+    if (perfilCompleto) {
+      aviso.classList.add("d-none");
     } else {
-      botonTema.innerHTML = '<i class="bi bi-moon-stars-fill me-1"></i> Oscuro';
+      aviso.classList.remove("d-none");
     }
   }
 
-  localStorage.setItem("huTema", tema);
-}
+  function bloquearNavegacionSiIncompleto() {
+    const enlaces = document.querySelectorAll("a.nav-link, a[href$='.html']");
 
-function iniciarTema() {
-  const guardado = localStorage.getItem("huTema") || "light";
-  aplicarTema(guardado);
+    enlaces.forEach((enlace) => {
+      enlace.addEventListener("click", (evento) => {
+        const href = enlace.getAttribute("href") || "";
+        const esCuenta =
+          href === "#" || href === "" || href.includes("cuenta.html");
 
-  const botonTema = document.getElementById("themeToggle");
-  if (botonTema) {
-    botonTema.addEventListener("click", () => {
-      const actual = localStorage.getItem("huTema") || "light";
-      aplicarTema(actual === "light" ? "dark" : "light");
+        if (!perfilCompleto && !esCuenta) {
+          evento.preventDefault();
+          alert(
+            "Completa tus datos básicos de paciente en Mi Cuenta antes de continuar."
+          );
+        }
+      });
     });
   }
-}
 
-// ================= NAVBAR: ACCEDER / MI CUENTA =================
-function actualizarNavAuth() {
-  const usuario = obtenerUsuario();
+  // ================== CARGAR PERFIL DESDE LA API ==================
+  async function cargarPerfilDesdeAPI() {
+    const mensajePerfil = document.getElementById("mensajePerfil");
 
-  const navLogin = document.getElementById("navLogin");
-  const navCuenta = document.getElementById("navCuenta");
-  const navCerrar = document.getElementById("navCerrarSesion");
+    try {
+      const respuesta = await fetch(
+        `${API_BASE}/pacientes/por-usuario/${usuario.id_usuario}`
+      );
 
-  if (!navLogin || !navCuenta || !navCerrar) return;
-
-  if (usuario) {
-    navLogin.classList.add("d-none");
-    navCuenta.classList.remove("d-none");
-    navCerrar.classList.remove("d-none");
-  } else {
-    navLogin.classList.remove("d-none");
-    navCuenta.classList.add("d-none");
-    navCerrar.classList.add("d-none");
-  }
-}
-
-
-// ================== LOGIN / REGISTRO contra API ==================
-
-// LOGIN
-async function login(nombreUsuarioForzado = null, passForzado = null, silencioso = false) {
-  const usuarioInput = document.getElementById("loginUser");
-  const passInput    = document.getElementById("loginPass");
-  const msg          = document.getElementById("loginMsg");
-
-  const nombre_usuario = (nombreUsuarioForzado ?? (usuarioInput && usuarioInput.value.trim())) || "";
-  const contrasena     = (passForzado ?? (passInput && passInput.value.trim())) || "";
-
-  if (!nombre_usuario || !contrasena) {
-    if (!silencioso && msg) {
-      msg.textContent = "Completa usuario y contraseña.";
-      msg.className = "text-danger text-small";
-    }
-    return false;
-  }
-
-  try {
-    const respuesta = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre_usuario, contrasena })
-    });
-
-    const data = await respuesta.json().catch(() => ({}));
-
-    if (!respuesta.ok) {
-      if (!silencioso && msg) {
-        msg.textContent = data.mensaje || "Usuario o contraseña incorrectos.";
-        msg.className = "text-danger text-small";
+      if (respuesta.status === 404) {
+        if (mensajePerfil) {
+          mensajePerfil.textContent =
+            "Aún no tienes datos de paciente, completa el formulario.";
+          mensajePerfil.className = "text-muted text-small";
+        }
+        actualizarEstadoPerfil();
+        return;
       }
-      return false;
+
+      if (!respuesta.ok) {
+        throw new Error("Error al cargar el perfil");
+      }
+
+      const datos = await respuesta.json();
+      const paciente = datos.paciente || datos;
+
+      document.getElementById("campoCiPaciente").value =
+        paciente.ci_paciente ?? "";
+      document.getElementById("campoNombreCompleto").value =
+        paciente.nombre_completo ?? "";
+      document.getElementById("campoCorreo").value = paciente.correo ?? "";
+      document.getElementById("campoCelular").value = paciente.celular ?? "";
+      document.getElementById("campoDireccion").value =
+        paciente.direccion ?? "";
+
+      if (paciente.fecha_nacimiento) {
+        document.getElementById("campoFechaNac").value = String(
+          paciente.fecha_nacimiento
+        ).substring(0, 10);
+      }
+
+      const campoSexo = document.getElementById("campoSexo");
+      if (campoSexo) {
+        if (paciente.sexo === 0 || paciente.sexo === 1) {
+          campoSexo.value = String(paciente.sexo);
+        } else {
+          campoSexo.value = "";
+        }
+      }
+
+      const campoTipoSangre = document.getElementById("campoTipoSangre");
+      if (campoTipoSangre && paciente.id_tipo_sangre) {
+        campoTipoSangre.value = paciente.id_tipo_sangre;
+      }
+
+      const campoCentro = document.getElementById("campoCentro");
+      if (campoCentro && paciente.id_centro) {
+        campoCentro.value = paciente.id_centro;
+      }
+
+      if (mensajePerfil) {
+        mensajePerfil.textContent =
+          "Datos cargados desde la base de datos.";
+        mensajePerfil.className = "text-success text-small";
+      }
+
+      actualizarEstadoPerfil();
+    } catch (error) {
+      console.error(error);
+      if (mensajePerfil) {
+        mensajePerfil.textContent =
+          "No se pudieron cargar los datos del paciente.";
+        mensajePerfil.className = "text-danger text-small";
+      }
     }
-
-    // Se espera que la API devuelva { usuario: {...} }
-    guardarUsuario(data.usuario || { nombre_usuario });
-
-    if (!silencioso && msg) {
-      msg.textContent = "";
-    }
-
-    actualizarNavAuth();
-
-    // Cerrar modal
-    const modalEl = document.getElementById("authModal");
-    if (!silencioso && modalEl && bootstrap?.Modal?.getInstance) {
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-    }
-
-    if (!silencioso) {
-      window.location.href = "cuenta.html";
-    }
-
-    return true;
-  } catch (err) {
-    console.error(err);
-    if (!silencioso && msg) {
-      msg.textContent = "No se pudo conectar con el servidor (API).";
-      msg.className = "text-danger text-small";
-    }
-    return false;
   }
-}
 
-// REGISTRO (usa solo datos de la tabla Usuario)
-async function register() {
-  const usuarioInput = document.getElementById("registerUser");
-  const passInput    = document.getElementById("registerPass");
-  const pass2Input   = document.getElementById("registerPass2");
-  const msg          = document.getElementById("registerMsg");
+  // ================== GUARDAR PERFIL EN LA API ==================
+  async function guardarPerfilEnAPI(evento) {
+    evento.preventDefault();
 
-  if (!usuarioInput || !passInput || !pass2Input || !msg) return;
-
-  const nombre_usuario = usuarioInput.value.trim();
-  const contrasena     = passInput.value.trim();
-  const contrasena2    = pass2Input.value.trim();
-
-  if (!nombre_usuario || !contrasena || !contrasena2) {
-    msg.textContent = "Completa todos los campos.";
-    msg.className = "text-danger text-small";
-    return;
-  }
-
-  if (contrasena !== contrasena2) {
-    msg.textContent = "Las contraseñas no coinciden.";
-    msg.className = "text-danger text-small";
-    return;
-  }
-
-  try {
-    const respuesta = await fetch(`${API_BASE}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre_usuario, contrasena })
-    });
-
-    const data = await respuesta.json().catch(() => ({}));
-
-    if (!respuesta.ok) {
-      msg.textContent = data.mensaje || "Error registrando usuario.";
-      msg.className = "text-danger text-small";
+    actualizarEstadoPerfil();
+    if (!perfilCompleto) {
+      alert("Completa todos los campos obligatorios (*) antes de guardar.");
       return;
     }
 
-    // Intentar login automático
-    const ok = await login(nombre_usuario, contrasena, true);
-    if (ok) {
-      msg.textContent = "Cuenta creada correctamente. Redirigiendo a Mi Cuenta...";
-      msg.className = "text-success text-small";
+    const mensajePerfil = document.getElementById("mensajePerfil");
 
-      const modalEl = document.getElementById("authModal");
-      if (modalEl && bootstrap?.Modal?.getInstance) {
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-      }
-
-      window.location.href = "cuenta.html";
-    } else {
-      msg.textContent = "Usuario creado. Inicia sesión con tus credenciales.";
-      msg.className = "text-success text-small";
-    }
-  } catch (err) {
-    console.error(err);
-    msg.textContent = "No se pudo conectar con el servidor (API).";
-    msg.className = "text-danger text-small";
-  }
-}
-
-// ================= NEWSLETTER =================
-function suscribirNewsletter() {
-  const input = document.getElementById("newsletterEmail");
-  const msg = document.getElementById("newsletterMsg");
-  if (!input || !msg) return;
-
-  const correo = input.value.trim();
-  if (!correo) {
-    msg.textContent = "Ingresa un correo válido.";
-    msg.classList.remove("text-success");
-    msg.classList.add("text-danger");
-    return;
-  }
-
-  const lista = leerLS(CLAVE_NEWSLETTER, []);
-  lista.push(correo);
-  guardarLS(CLAVE_NEWSLETTER, lista);
-
-  msg.textContent = "¡Gracias por suscribirte!";
-  msg.classList.add("text-success");
-  msg.classList.remove("text-danger");
-  input.value = "";
-}
-
-// ================= CARRITO =================
-function obtenerCarrito() {
-  return leerLS(CLAVE_CARRITO, []);
-}
-
-function guardarCarrito(carrito) {
-  guardarLS(CLAVE_CARRITO, carrito);
-}
-
-function actualizarContadorCarrito() {
-  const carrito = obtenerCarrito();
-  const total = carrito.reduce((acc, item) => acc + item.cantidad, 0);
-
-  const span1 = document.getElementById("cart-count");
-  const span2 = document.getElementById("cartCount");
-
-  if (span1) span1.textContent = total;
-  if (span2) span2.textContent = total;
-}
-
-// Página comprar.html (botones "Agregar al carrito")
-function iniciarComprar() {
-  const botones = document.querySelectorAll(".btn-add-cart");
-  if (!botones.length) return;
-
-  const mensajeDiv = document.getElementById("mensaje");
-
-  botones.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const nombre = btn.getAttribute("data-name");
-      const precio = parseFloat(btn.getAttribute("data-price") || "0");
-      const carrito = obtenerCarrito();
-
-      const encontrado = carrito.find(
-        (p) => p.nombre === nombre && p.precio === precio
-      );
-      if (encontrado) {
-        encontrado.cantidad += 1;
-      } else {
-        carrito.push({ nombre, precio, cantidad: 1 });
-      }
-
-      guardarCarrito(carrito);
-      actualizarContadorCarrito();
-
-      if (mensajeDiv) {
-        mensajeDiv.className = "alert alert-success mt-3";
-        mensajeDiv.textContent = "Producto agregado al carrito.";
-        setTimeout(() => {
-          mensajeDiv.className = "";
-          mensajeDiv.textContent = "";
-        }, 2000);
-      }
-    });
-  });
-}
-
-// ================= DATOS DEL COMPRADOR =================
-function obtenerComprador() {
-  return leerLS(CLAVE_COMPRADOR, null);
-}
-
-function guardarComprador(comprador) {
-  guardarLS(CLAVE_COMPRADOR, comprador);
-}
-
-function iniciarDatos() {
-  const formulario = document.getElementById("form-datos");
-  if (!formulario) return;
-
-  const comprador = obtenerComprador();
-  if (comprador) {
-    formulario.nombre.value = comprador.nombre || "";
-    formulario.direccion.value = comprador.direccion || "";
-    formulario.telefono.value = comprador.telefono || "";
-    formulario.correo.value = comprador.correo || "";
-    formulario.ubicacion.value = comprador.ubicacion || "";
-  }
-
-  formulario.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const datos = {
-      nombre: formulario.nombre.value.trim(),
-      direccion: formulario.direccion.value.trim(),
-      telefono: formulario.telefono.value.trim(),
-      correo: formulario.correo.value.trim(),
-      ubicacion: formulario.ubicacion.value.trim(),
+    const datosEnviar = {
+      ci_paciente: Number(
+        document.getElementById("campoCiPaciente").value
+      ),
+      nombre_completo: document
+        .getElementById("campoNombreCompleto")
+        .value.trim(),
+      correo: document.getElementById("campoCorreo").value.trim(),
+      celular: document.getElementById("campoCelular").value.trim(),
+      fecha_nacimiento: document.getElementById("campoFechaNac").value,
+      direccion: document.getElementById("campoDireccion").value.trim(),
+      sexo: Number(document.getElementById("campoSexo").value),
+      id_tipo_sangre: Number(
+        document.getElementById("campoTipoSangre").value
+      )
+      // Edad NO se envía; la puedes calcular en backend si quieres
     };
 
-    guardarComprador(datos);
-    window.location.href = "pedido.html";
-  });
-}
+    const campoCentro = document.getElementById("campoCentro");
+    if (campoCentro && campoCentro.value.trim() !== "") {
+      datosEnviar.id_centro = Number(campoCentro.value);
+    }
 
-// ================= PÁGINA PEDIDO =================
-function iniciarPedido() {
-  const cuerpoTabla = document.getElementById("tabla-carrito");
-  const totalSpan = document.getElementById("total-pagar");
-  const datosDiv = document.getElementById("datos-comprador");
-  const btnFinalizar = document.getElementById("btn-finalizar");
+    try {
+      const respuesta = await fetch(
+        `${API_BASE}/pacientes/por-usuario/${usuario.id_usuario}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(datosEnviar)
+        }
+      );
 
-  if (!cuerpoTabla || !totalSpan) return;
+      const datos = await respuesta.json().catch(() => ({}));
 
-  function renderizarPedido() {
-    const carrito = obtenerCarrito();
-    cuerpoTabla.innerHTML = "";
-    let total = 0;
+      if (!respuesta.ok) {
+        throw new Error(datos.mensaje || "Error al guardar los datos");
+      }
 
-    if (!carrito.length) {
-      const fila = document.createElement("tr");
-      const celda = document.createElement("td");
-      celda.colSpan = 5;
-      celda.className = "text-center";
-      celda.textContent =
-        'Tu carrito está vacío. Agrega el sistema desde "Comprar sistema".';
-      fila.appendChild(celda);
-      cuerpoTabla.appendChild(fila);
-    } else {
-      carrito.forEach((item, indice) => {
-        const fila = document.createElement("tr");
+      if (mensajePerfil) {
+        mensajePerfil.textContent =
+          "Datos de paciente guardados correctamente en la base de datos.";
+        mensajePerfil.className = "text-success text-small";
+      }
 
-        const tdNombre = document.createElement("td");
-        tdNombre.textContent = item.nombre;
+      actualizarEstadoPerfil();
+    } catch (error) {
+      console.error(error);
+      if (mensajePerfil) {
+        mensajePerfil.textContent =
+          error.message || "No se pudieron guardar los datos.";
+        mensajePerfil.className = "text-danger text-small";
+      }
+    }
+  }
 
-        const tdCantidad = document.createElement("td");
-        tdCantidad.className = "text-center";
-        tdCantidad.textContent = item.cantidad;
+  // ================== CAMBIO DE CONTRASEÑA ==================
+  async function cambiarContrasena() {
+    const contrasenaActual = document
+      .getElementById("campoPassActual")
+      .value.trim();
+    const contrasenaNueva = document
+      .getElementById("campoPassNueva")
+      .value.trim();
+    const contrasenaRepetir = document
+      .getElementById("campoPassRepetir")
+      .value.trim();
 
-        const tdPrecio = document.createElement("td");
-        tdPrecio.className = "text-end";
-        tdPrecio.textContent = "Bs " + item.precio.toFixed(2);
+    const mensajePass = document.getElementById("mensajePass");
 
-        const subtotal = item.precio * item.cantidad;
-        const tdSubtotal = document.createElement("td");
-        tdSubtotal.className = "text-end";
-        tdSubtotal.textContent = "Bs " + subtotal.toFixed(2);
-        total += subtotal;
+    if (!contrasenaActual || !contrasenaNueva || !contrasenaRepetir) {
+      if (mensajePass) {
+        mensajePass.textContent = "Completa todos los campos.";
+        mensajePass.className = "text-danger text-small";
+      }
+      return;
+    }
 
-        const tdAccion = document.createElement("td");
-        tdAccion.className = "text-end";
-        const botonEliminar = document.createElement("button");
-        botonEliminar.className = "btn btn-sm btn-outline-danger";
-        botonEliminar.textContent = "Eliminar";
-        botonEliminar.addEventListener("click", () => {
-          const c = obtenerCarrito();
-          c.splice(indice, 1);
-          guardarCarrito(c);
-          renderizarPedido();
-          actualizarContadorCarrito();
-        });
-        tdAccion.appendChild(botonEliminar);
+    if (contrasenaNueva.length < 6) {
+      if (mensajePass) {
+        mensajePass.textContent =
+          "La nueva contraseña debe tener al menos 6 caracteres.";
+        mensajePass.className = "text-danger text-small";
+      }
+      return;
+    }
 
-        fila.append(tdNombre, tdCantidad, tdPrecio, tdSubtotal, tdAccion);
-        cuerpoTabla.appendChild(fila);
+    if (contrasenaNueva !== contrasenaRepetir) {
+      if (mensajePass) {
+        mensajePass.textContent = "Las contraseñas nuevas no coinciden.";
+        mensajePass.className = "text-danger text-small";
+      }
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(`${API_BASE}/auth/cambiar-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_usuario: usuario.id_usuario,
+          contrasenaActual,
+          contrasenaNueva
+        })
       });
-    }
 
-    totalSpan.textContent = total.toFixed(2);
-  }
+      const datos = await respuesta.json().catch(() => ({}));
 
-  renderizarPedido();
-
-  if (datosDiv) {
-    const comprador = obtenerComprador();
-    if (comprador) {
-      datosDiv.innerHTML = `
-        <p class="mb-1"><strong>Nombre:</strong> ${comprador.nombre}</p>
-        <p class="mb-1"><strong>Teléfono:</strong> ${comprador.telefono}</p>
-        <p class="mb-1"><strong>Correo:</strong> ${comprador.correo}</p>
-        <p class="mb-0"><strong>Ubicación:</strong> ${comprador.ubicacion}</p>
-      `;
-    } else {
-      datosDiv.innerHTML =
-        '<p class="text-muted">Aún no registraste tus datos. Completa el formulario en "Datos del comprador".</p>';
-    }
-  }
-
-  if (btnFinalizar) {
-    btnFinalizar.addEventListener("click", () => {
-      const carrito = obtenerCarrito();
-      if (!carrito.length) {
-        alert("Tu carrito está vacío.");
-        return;
+      if (!respuesta.ok) {
+        throw new Error(
+          datos.mensaje || "No se pudo actualizar la contraseña"
+        );
       }
-      alert("¡Gracias por tu compra de Healthy U!");
-      guardarCarrito([]);
-      actualizarContadorCarrito();
-      window.location.href = "index.html";
-    });
-  }
-}
 
-// ================= BLOG (LOCAL) =================
-function obtenerPosts() {
-  return leerLS(CLAVE_POSTS, []);
-}
+      if (mensajePass) {
+        mensajePass.textContent = "Contraseña actualizada correctamente.";
+        mensajePass.className = "text-success text-small";
+      }
 
-function guardarPosts(posts) {
-  guardarLS(CLAVE_POSTS, posts);
-}
-
-function renderizarListaPosts(items) {
-  const contenedor = document.getElementById("blogPosts");
-  if (!contenedor) return;
-
-  contenedor.innerHTML = "";
-
-  if (!items.length) {
-    contenedor.innerHTML =
-      '<div class="col-12"><div class="alert alert-info">Aún no hay publicaciones. Usa el formulario de arriba para crear la primera.</div></div>';
-    return;
-  }
-
-  items.forEach(({ post, indice }) => {
-    const col = document.createElement("div");
-    col.className = "col-md-6 col-lg-4";
-
-    const tarjeta = document.createElement("div");
-    tarjeta.className = "card hu-card h-100";
-
-    const cuerpo = document.createElement("div");
-    cuerpo.className = "card-body d-flex flex-column";
-
-    const titulo = document.createElement("h5");
-    titulo.className = "card-title fw-bold";
-    titulo.textContent = post.titulo;
-
-    const parrafo = document.createElement("p");
-    parrafo.className = "card-text text-muted flex-grow-1";
-    const resumen =
-      post.contenido.length > 140
-        ? post.contenido.substring(0, 140) + "…"
-        : post.contenido;
-    parrafo.textContent = resumen;
-
-    const info = document.createElement("p");
-    info.className = "text-small text-muted mb-2";
-    info.textContent = `Por ${post.autor} · ${post.fecha}`;
-
-    const botonLeer = document.createElement("button");
-    botonLeer.className = "btn btn-outline-primary btn-sm align-self-start";
-    botonLeer.textContent = "Leer más";
-    botonLeer.addEventListener("click", () => verPost(indice));
-
-    cuerpo.append(titulo, parrafo, info, botonLeer);
-    tarjeta.appendChild(cuerpo);
-    col.appendChild(tarjeta);
-    contenedor.appendChild(col);
-  });
-}
-
-function actualizarPermisosBlog() {
-  const contenedorFormulario = document.getElementById("postFormContainer");
-  const logueado = estaLogueado();
-
-  if (contenedorFormulario) {
-    contenedorFormulario.style.display = logueado ? "block" : "none";
-  }
-}
-
-function crearPost() {
-  const usuario = obtenerUsuario();
-  const logueado = !!usuario;
-
-  if (!logueado) {
-    alert("Debes iniciar sesión para crear una publicación.");
-    return;
-  }
-
-  const inputTitulo = document.getElementById("postTitulo");
-  const inputContenido = document.getElementById("postContenido");
-  if (!inputTitulo || !inputContenido) return;
-
-  const titulo = inputTitulo.value.trim();
-  const contenido = inputContenido.value.trim();
-  if (!titulo || !contenido) return;
-
-  const posts = obtenerPosts();
-  const autorNombre =
-    usuario.nombre_usuario ||
-    usuario.username ||
-    usuario.nombre ||
-    "Usuario";
-
-  const nuevo = {
-    titulo,
-    contenido,
-    autor: autorNombre,
-    fecha: new Date().toLocaleString(),
-  };
-
-  posts.push(nuevo);
-  guardarPosts(posts);
-
-  inputTitulo.value = "";
-  inputContenido.value = "";
-  mostrarPosts();
-}
-
-function verPost(indice) {
-  const posts = obtenerPosts();
-  const post = posts[indice];
-  if (!post) return;
-
-  alert(
-    post.titulo +
-      "\n\n" +
-      post.contenido +
-      "\n\nAutor: " +
-      post.autor +
-      " · " +
-      post.fecha
-  );
-}
-
-function mostrarPosts(filtroTexto) {
-  const posts = obtenerPosts();
-  const items = [];
-
-  posts.forEach((p, idx) => {
-    if (!filtroTexto) {
-      items.push({ post: p, indice: idx });
-    } else {
-      const q = filtroTexto.toLowerCase();
-      if (
-        p.titulo.toLowerCase().includes(q) ||
-        p.contenido.toLowerCase().includes(q)
-      ) {
-        items.push({ post: p, indice: idx });
+      document.getElementById("campoPassActual").value = "";
+      document.getElementById("campoPassNueva").value = "";
+      document.getElementById("campoPassRepetir").value = "";
+    } catch (error) {
+      console.error(error);
+      if (mensajePass) {
+        mensajePass.textContent =
+          error.message || "Error al actualizar la contraseña.";
+        mensajePass.className = "text-danger text-small";
       }
     }
-  });
+  }
 
-  renderizarListaPosts(items);
-}
+  // ================== ELIMINAR CUENTA ==================
+  async function eliminarCuenta() {
+    const confirmar = confirm(
+      "Esta acción eliminará tu cuenta y no podrás volver a iniciar sesión con este usuario. ¿Deseas continuar?"
+    );
+    if (!confirmar) return;
 
-function iniciarBlog() {
-  const contenedorPosts = document.getElementById("blogPosts");
-  if (!contenedorPosts) return;
+    try {
+      const respuesta = await fetch(
+        `${API_BASE}/auth/eliminar-cuenta/${usuario.id_usuario}`,
+        { method: "DELETE" }
+      );
 
-  const buscador = document.getElementById("blogSearch");
+      const datos = await respuesta.json().catch(() => ({}));
 
-  if (buscador) {
-    buscador.addEventListener("input", () => {
-      const texto = buscador.value.trim();
-      mostrarPosts(texto);
+      if (!respuesta.ok) {
+        throw new Error(
+          datos.mensaje || "No se pudo eliminar la cuenta."
+        );
+      }
+
+      alert("Tu cuenta se eliminó correctamente.");
+      if (typeof logout === "function") logout();
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Error al eliminar la cuenta.");
+    }
+  }
+
+  // ================== INICIALIZAR EVENTOS ==================
+  await cargarPerfilDesdeAPI();
+  actualizarEstadoPerfil();
+  bloquearNavegacionSiIncompleto();
+
+  const formularioPerfil = document.getElementById("formPerfil");
+  if (formularioPerfil) {
+    formularioPerfil.addEventListener("submit", guardarPerfilEnAPI);
+    formularioPerfil.querySelectorAll("input, select").forEach((elemento) => {
+      elemento.addEventListener("input", actualizarEstadoPerfil);
+      elemento.addEventListener("change", actualizarEstadoPerfil);
     });
   }
 
-  actualizarPermisosBlog();
-  mostrarPosts();
-}
-
-// ================= PERFIL / CUENTA (BÁSICO) =================
-function iniciarPerfil() {
-  const caja = document.getElementById("profileBox");
-  if (!caja) return;
-
-  const usuario = obtenerUsuario();
-
-  const nombreEl = document.getElementById("profileUsername");
-  const correoEl = document.getElementById("profileEmail");
-  const postsEl = document.getElementById("profilePostsCount");
-  const temaEl = document.getElementById("profileTheme");
-
-  if (!usuario) {
-    caja.innerHTML =
-      '<div class="alert alert-warning">Debes iniciar sesión para ver tu perfil.</div>';
-    return;
+  const botonCambiarPass = document.getElementById("btnCambiarPass");
+  if (botonCambiarPass) {
+    botonCambiarPass.addEventListener("click", cambiarContrasena);
   }
 
-  const posts = obtenerPosts().filter(
-    (p) =>
-      p.autor ===
-      (usuario.nombre_usuario || usuario.username || usuario.nombre)
-  );
-
-  if (nombreEl) nombreEl.textContent =
-    usuario.nombre_usuario || usuario.username || usuario.nombre || "";
-  if (correoEl) correoEl.textContent = usuario.correo || "";
-  if (postsEl) postsEl.textContent = posts.length.toString();
-  if (temaEl)
-    temaEl.textContent =
-      localStorage.getItem("huTema") === "dark" ? "Oscuro" : "Claro";
-}
-
-// ================= INICIALIZACIÓN GLOBAL =================
-document.addEventListener("DOMContentLoaded", () => {
-  iniciarTema();
-  actualizarNavAuth();
-  actualizarContadorCarrito();
-  iniciarComprar();
-  iniciarDatos();
-  iniciarPedido();
-  iniciarBlog();
-  iniciarPerfil();
+  const botonEliminarCuenta = document.getElementById("botonEliminarCuenta");
+  if (botonEliminarCuenta) {
+    botonEliminarCuenta.addEventListener("click", eliminarCuenta);
+  }
 });
-
-
-// Cerrar sesión
-function logout() {
-  localStorage.removeItem("usuario");
-  localStorage.removeItem("token");
-
-  // Refrescar navegación
-  actualizarNavAuth();
-
-  // Redirigir
-  window.location.href = "index.html";
-}
