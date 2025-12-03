@@ -16,119 +16,118 @@
     href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
   />
   <!-- Estilos propios -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="../assets/css/style.css" />
 </head>
 <body>
   <!-- ================= NAVBAR PRINCIPAL ================= -->
-<nav
-  class="navbar navbar-expand-lg navbar-light barra-navegacion"
-  style="background-color: var(--bg-card); border-bottom: 1px solid var(--border-soft);"
->
-  <div class="container">
+  <nav
+    class="navbar navbar-expand-lg navbar-light barra-navegacion"
+    style="background-color: var(--bg-card); border-bottom: 1px solid var(--border-soft);"
+  >
+    <div class="container">
 
-    <!-- Solo logo -->
-    <a class="navbar-brand" href="index.html">
-      <img
-        src="IMAGENES/logo_horizontal.png"
-        alt="Healthy U"
-        style="max-height: 40px"
-      />
-    </a>
+      <!-- Solo logo -->
+      <a class="navbar-brand" href="index.html">
+        <img
+          src="../../IMAGENES/pagina/logo_horizontal.png"
+          alt="Healthy U"
+          style="max-height: 40px"
+        />
+      </a>
 
-    <!-- Botón hamburguesa móvil -->
-    <button
-      class="navbar-toggler"
-      type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#navbarHealthyU"
-      aria-controls="navbarHealthyU"
-      aria-expanded="false"
-      aria-label="Mostrar navegación"
-    >
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <!-- Contenido del menú -->
-    <div class="collapse navbar-collapse" id="navbarHealthyU">
-
-      <!-- Menú principal -->
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0 menu-principal">
-        <li class="nav-item">
-          <a class="nav-link" href="index.html" style="color: var(--text-main);">
-            <i class="bi bi-house-door me-1"></i>Inicio
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="manual.html" style="color: var(--text-main);">
-            <i class="bi bi-book me-1"></i>Manual
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="blog.html" style="color: var(--text-main);">
-            <i class="bi bi-journal-text me-1"></i>Blog
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link" href="contacto.html" style="color: var(--text-main);">
-            <i class="bi bi-envelope me-1"></i>Contacto
-          </a>
-        </li>
-
-        <!-- ⭐ NUEVO: PRECIOS -->
-        <li class="nav-item">
-          <a class="nav-link" href="comprar.html" style="color: var(--text-main);">
-            <i class="bi bi-tags me-1"></i>Precios
-          </a>
-        </li>
-      </ul>
-
-      <!-- Lado derecho: Pedido + Acceder + Tema -->
-      <div
-        class="d-flex align-items-center ms-lg-4 mt-3 mt-lg-0 gap-2 border-start ps-lg-4 pt-2 pt-lg-0 zona-derecha-nav"
-        style="border-color: var(--border-soft) !important;"
+      <!-- Botón hamburguesa móvil -->
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarHealthyU"
+        aria-controls="navbarHealthyU"
+        aria-expanded="false"
+        aria-label="Mostrar navegación"
       >
-        <!-- Botón Pedido (oscuro) -->
-        <a href="pedido.html" class="btn btn-dark btn-sm boton-pedido">
-          <i class="bi bi-cart3 me-1"></i>
-          Pedido
-          <span
-            id="cartCount"
-            class="badge bg-light text-dark ms-1"
-            style="font-size: 0.7rem"
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Contenido del menú -->
+      <div class="collapse navbar-collapse" id="navbarHealthyU">
+
+        <!-- Menú principal -->
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0 menu-principal">
+          <li class="nav-item">
+            <a class="nav-link" href="index.html" style="color: var(--text-main);">
+              <i class="bi bi-house-door me-1"></i>Inicio
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="manual.html" style="color: var(--text-main);">
+              <i class="bi bi-book me-1"></i>Manual
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="blog.html" style="color: var(--text-main);">
+              <i class="bi bi-journal-text me-1"></i>Blog
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link" href="contacto.html" style="color: var(--text-main);">
+              <i class="bi bi-envelope me-1"></i>Contacto
+            </a>
+          </li>
+
+          <!-- ⭐ NUEVO: PRECIOS -->
+          <li class="nav-item">
+            <a class="nav-link" href="comprar.html" style="color: var(--text-main);">
+              <i class="bi bi-tags me-1"></i>Precios
+            </a>
+          </li>
+        </ul>
+
+        <!-- Lado derecho: Pedido + Acceder + Tema -->
+        <div
+          class="d-flex align-items-center ms-lg-4 mt-3 mt-lg-0 gap-2 border-start ps-lg-4 pt-2 pt-lg-0 zona-derecha-nav"
+          style="border-color: var(--border-soft) !important;"
+        >
+          <!-- Botón Pedido (oscuro) -->
+          <a href="pedido.html" class="btn btn-dark btn-sm boton-pedido">
+            <i class="bi bi-cart3 me-1"></i>
+            Pedido
+            <span
+              id="cartCount"
+              class="badge bg-light text-dark ms-1"
+              style="font-size: 0.7rem"
+            >
+              0
+            </span>
+          </a>
+
+          <!-- Botón Login / Registro (JS lo convierte en "Mi Cuenta" si está logueado) -->
+          <button
+            id="btnLoginNav"
+            type="button"
+            class="btn btn-hu-accent btn-sm boton-acceder"
+            data-bs-toggle="modal"
+            data-bs-target="#authModal"
           >
-            0
-          </span>
-        </a>
+            <i class="bi bi-box-arrow-in-right me-1"></i>
+            Acceder
+          </button>
 
-        <!-- Botón Login / Registro (JS lo convierte en "Mi Cuenta" si está logueado) -->
-        <button
-          id="btnLoginNav"
-          type="button"
-          class="btn btn-hu-accent btn-sm boton-acceder"
-          data-bs-toggle="modal"
-          data-bs-target="#authModal"
-        >
-          <i class="bi bi-box-arrow-in-right me-1"></i>
-          Acceder
-        </button>
-
-        <!-- Botón cambio de tema -->
-        <button
-          id="themeToggle"
-          type="button"
-          class="btn btn-outline-secondary btn-sm boton-tema"
-          title="Cambiar tema"
-        >
-          <i class="bi bi-moon-stars"></i>
-        </button>
+          <!-- Botón cambio de tema -->
+          <button
+            id="themeToggle"
+            type="button"
+            class="btn btn-outline-secondary btn-sm boton-tema"
+            title="Cambiar tema"
+          >
+            <i class="bi bi-moon-stars"></i>
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-</nav>
-
+  </nav>
 
   <!-- ================= SECCIÓN HERO ================= -->
   <section class="hero seccion-hero py-5">
@@ -186,7 +185,7 @@
         <!-- Imagen principal -->
         <div class="col-lg-6 text-center order-1 order-lg-2">
           <img
-            src="Imagenes/HealthyU_Header.png"
+            src="../Imagenes/HealthyU_Header.png"
             alt="Panel de Healthy U"
             class="img-fluid rounded-4 hu-hover imagen-hero"
           />
@@ -202,7 +201,7 @@
         <!-- Imagen descriptiva -->
         <div class="col-lg-6">
           <img
-            src="Imagenes/queEs.png"
+            src="../../Imagenes/pagina/queEs.png"
             alt="Qué es Healthy U"
             class="img-fluid rounded-4 hu-hover imagen-que-es"
           />
@@ -314,7 +313,6 @@
           </div>
         </div>
 
-
         <!-- Módulo: Blog educativo -->
         <div class="col-md-6 col-lg-4">
           <div class="hu-card tarjeta-modulo h-100 p-4">
@@ -396,7 +394,7 @@
               <div class="hu-card tarjeta-testimonio p-3 h-100">
                 <div class="d-flex align-items-center mb-2">
                   <img
-                    src="IMAGENES/resena/medico.webp"
+                    src="../../IMAGENES/resena/medico.webp"
                     alt="Profesional 1"
                     class="profile-avatar avatar-perfil me-3"
                   />
@@ -415,7 +413,7 @@
               <div class="hu-card tarjeta-testimonio p-3 h-100">
                 <div class="d-flex align-items-center mb-2">
                   <img
-                    src="Imagenes/resena/enfermera.jpg"
+                    src="../../Imagenes/resena/enfermera.jpg"
                     alt="Profesional 2"
                     class="profile-avatar avatar-perfil me-3"
                   />
@@ -454,7 +452,7 @@
         <div class="col-md-4 col-lg-3">
           <div class="hu-card tarjeta-integrante p-4 text-center h-100">
             <img
-              src="Imagenes/integrantes/walky.jpg"
+              src="../../IMAGENES/integrantes/walky.jpg"
               alt="Walkyria Audivert"
               class="team-avatar avatar-equipo mb-3 mx-auto d-block"
             />
@@ -485,7 +483,7 @@
         <div class="col-md-4 col-lg-3">
           <div class="hu-card tarjeta-integrante p-4 text-center h-100">
             <img
-              src="Imagenes/integrantes/deibi.jpg"
+              src="../../Imagenes/integrantes/deibi.jpg"
               alt="Deibi Cruz"
               class="team-avatar avatar-equipo mb-3 mx-auto d-block"
             />
@@ -516,7 +514,7 @@
         <div class="col-md-4 col-lg-3">
           <div class="hu-card tarjeta-integrante p-4 text-center h-100">
             <img
-              src="Imagenes/integrantes/dell.png"
+              src="../../Imagenes/integrantes/dell.png"
               alt="Diego Dell"
               class="team-avatar avatar-equipo mb-3 mx-auto d-block"
             />
@@ -551,7 +549,7 @@
         <div class="col-md-4 col-lg-3">
           <div class="hu-card tarjeta-integrante p-4 text-center h-100">
             <img
-              src="Imagenes/integrantes/mikaela.jpg"
+              src="../../Imagenes/integrantes/mikaela.jpg"
               alt="Mikaela Gutiérrez"
               class="team-avatar avatar-equipo mb-3 mx-auto d-block"
             />
@@ -582,7 +580,7 @@
         <div class="col-md-4 col-lg-3">
           <div class="hu-card tarjeta-integrante p-4 text-center h-100">
             <img
-              src="Imagenes/integrantes/pablo.jpg"
+              src="../../Imagenes/integrantes/pablo.jpg"
               alt="Pablo Quiroz"
               class="team-avatar avatar-equipo mb-3 mx-auto d-block"
             />
@@ -743,14 +741,14 @@
               aria-labelledby="login-tab"
               tabindex="0"
             >
-              <form onsubmit="event.preventDefault(); login();">
+              <form id="formLogin">
                 <div class="mb-3">
-                  <label for="loginUser" class="form-label">Usuario o correo</label>
+                  <label for="loginUser" class="form-label">Nombre de usuario</label>
                   <input
                     type="text"
                     class="form-control"
                     id="loginUser"
-                    placeholder="tucorreo@ejemplo.com"
+                    placeholder="tu_usuario"
                     required
                   />
                 </div>
@@ -764,11 +762,6 @@
                     required
                   />
                 </div>
-                <div class="mb-2 text-end">
-                  <a href="#" class="text-decoration-none text-small">
-                    ¿Olvidaste tu contraseña?
-                  </a>
-                </div>
                 <div id="loginMsg" class="text-danger text-small mb-2"></div>
                 <button type="submit" class="btn btn-hu-accent w-100">
                   <i class="bi bi-box-arrow-in-right me-1"></i>
@@ -777,7 +770,7 @@
               </form>
             </div>
 
-            <!-- REGISTRO -->
+            <!-- REGISTRO (usa solo datos de Usuario) -->
             <div
               class="tab-pane fade"
               id="register-pane"
@@ -785,24 +778,14 @@
               aria-labelledby="register-tab"
               tabindex="0"
             >
-              <form onsubmit="event.preventDefault(); register();">
+              <form id="formRegister">
                 <div class="mb-3">
-                  <label for="registerName" class="form-label">Nombre completo</label>
+                  <label for="registerUser" class="form-label">Nombre de usuario</label>
                   <input
                     type="text"
                     class="form-control"
-                    id="registerName"
-                    placeholder="Nombre y apellido"
-                    required
-                  />
-                </div>
-                <div class="mb-3">
-                  <label for="registerEmail" class="form-label">Correo</label>
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="registerEmail"
-                    placeholder="correo@ejemplo.com"
+                    id="registerUser"
+                    placeholder="tu_usuario"
                     required
                   />
                 </div>
@@ -837,7 +820,7 @@
         </div>
         <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
           <small class="text-muted">
-            Tus datos de acceso se guardan solo en este equipo (localStorage).
+            Tus datos de acceso se guardan en el servidor Healthy U.
           </small>
         </div>
       </div>
@@ -855,6 +838,7 @@
 
   <!-- JS Bootstrap + JS principal -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="script.js"></script>
+  <script src="../js/script.js"></script>
+  <script src="../js/main.js"></script>
 </body>
 </html>
