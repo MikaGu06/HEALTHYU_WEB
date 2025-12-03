@@ -1,4 +1,11 @@
+// ================= CONFIGURACIÓN API =================
+const API_BASE = "http://localhost:4000/api";
+// Si más adelante publicas la API en otro dominio / puerto,
+// solo cambia esta línea, por ejemplo:
+// const API_BASE = "http://159.203.102.189:4000/api";
+
 // ================= UTILIDADES LOCALSTORAGE =================
+
 function leerLS(clave, defecto) {
   const dato = localStorage.getItem(clave);
   return dato ? JSON.parse(dato) : (defecto ?? null);
@@ -9,28 +16,29 @@ function guardarLS(clave, valor) {
 }
 
 // claves base
-const CLAVE_USUARIO = "hu_usuario";
-const CLAVE_SESION = "hu_sesion_activa";
+const CLAVE_USUARIO = "hu_usuario";      // sesión
 const CLAVE_CARRITO = "hu_carrito";
 const CLAVE_COMPRADOR = "hu_comprador";
 const CLAVE_POSTS = "hu_posts";
 const CLAVE_NEWSLETTER = "hu_newsletter";
 
-// ================= USUARIO / SESIÓN =================
+// ================= SESIÓN / USUARIO (BACKEND) =================
 function obtenerUsuario() {
-  return leerLS(CLAVE_USUARIO, null);
+  const raw = localStorage.getItem(CLAVE_USUARIO);
+  return raw ? JSON.parse(raw) : null;
 }
 
 function guardarUsuario(usuario) {
-  guardarLS(CLAVE_USUARIO, usuario);
+  localStorage.setItem(CLAVE_USUARIO, JSON.stringify(usuario));
 }
 
 function estaLogueado() {
-  return localStorage.getItem(CLAVE_SESION) === "true";
+  return !!obtenerUsuario();
 }
 
-function establecerSesion(activa) {
-  localStorage.setItem(CLAVE_SESION, activa ? "true" : "false");
+function logout() {
+  localStorage.removeItem(CLAVE_USUARIO);
+  window.location.href = "index.html";
 }
 
 // ================= TEMA CLARO / OSCURO =================
@@ -69,122 +77,166 @@ function iniciarTema() {
 }
 
 // ================= NAVBAR: ACCEDER / MI CUENTA =================
-function actualizarNavUsuario() {
-  const botonLogin = document.getElementById("btnLoginNav");
+function actualizarNavAuth() {
+  const btnLoginNav = document.getElementById("btnLoginNav");
+  if (!btnLoginNav) return;
+
   const usuario = obtenerUsuario();
-  const logueado = estaLogueado() && usuario;
 
-  // Si no existe el botón en esta página, nada que hacer
-  if (!botonLogin) return;
-
-  if (logueado) {
-    // Reemplaza el botón "Acceder" por un link "Mi Cuenta"
-    botonLogin.outerHTML = `
-      <a href="cuenta.html" class="btn btn-hu-accent btn-sm boton-acceder" id="btnCuentaNav">
-        <i class="bi bi-person-circle me-1"></i>
-        Mi Cuenta
+  if (usuario) {
+    // Reemplaza botón "Acceder" por enlace "Mi Cuenta"
+    btnLoginNav.outerHTML = `
+      <a href="cuenta.html" class="btn btn-hu-accent btn-sm" id="btnCuentaNav">
+        <i class="bi bi-person-circle me-1"></i> Mi Cuenta
       </a>
+    `;
+  } else {
+    // Asegura que exista el botón de acceso con el modal
+    btnLoginNav.outerHTML = `
+      <button
+        id="btnLoginNav"
+        type="button"
+        class="btn btn-hu-accent btn-sm boton-acceder"
+        data-bs-toggle="modal"
+        data-bs-target="#authModal">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Acceder
+      </button>
     `;
   }
 }
 
-// ================= AUTENTICACIÓN (MODAL) =================
-function register() {
-  const nombre = document.getElementById("registerName");
-  const correo = document.getElementById("registerEmail");
-  const pass = document.getElementById("registerPass");
-  const pass2 = document.getElementById("registerPass2");
-  const msg = document.getElementById("registerMsg");
+// ================== LOGIN / REGISTRO contra API ==================
 
-  if (!nombre || !correo || !pass || !pass2 || !msg) return;
-
-  const n = nombre.value.trim();
-  const e = correo.value.trim();
-  const p1 = pass.value.trim();
-  const p2 = pass2.value.trim();
-
-  if (!n || !e || !p1 || !p2) {
-    msg.textContent = "Completa todos los campos.";
-    msg.classList.remove("text-success");
-    msg.classList.add("text-danger");
-    return;
-  }
-
-  if (p1 !== p2) {
-    msg.textContent = "Las contraseñas no coinciden.";
-    msg.classList.remove("text-success");
-    msg.classList.add("text-danger");
-    return;
-  }
-
-  const nuevoUsuario = {
-    nombre: n,
-    correo: e,
-    password: p1,
-    username: n // si quieres otro username, aquí lo cambias
-  };
-
-  guardarUsuario(nuevoUsuario);
-  establecerSesion(true);
-
-  msg.textContent = "Usuario registrado correctamente.";
-  msg.classList.remove("text-danger");
-  msg.classList.add("text-success");
-
-  setTimeout(() => {
-    const modalEl = document.getElementById("authModal");
-    if (modalEl && window.bootstrap) {
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) modal.hide();
-    }
-    actualizarNavUsuario();
-    actualizarPermisosBlog();
-  }, 800);
-}
-
-function login() {
+// LOGIN
+async function login(nombreUsuarioForzado = null, passForzado = null, silencioso = false) {
   const usuarioInput = document.getElementById("loginUser");
-  const passInput = document.getElementById("loginPass");
-  const msg = document.getElementById("loginMsg");
+  const passInput    = document.getElementById("loginPass");
+  const msg          = document.getElementById("loginMsg");
 
-  if (!usuarioInput || !passInput || !msg) return;
+  const nombre_usuario = (nombreUsuarioForzado ?? (usuarioInput && usuarioInput.value.trim())) || "";
+  const contrasena     = (passForzado ?? (passInput && passInput.value.trim())) || "";
 
-  const guardado = obtenerUsuario();
-  const u = usuarioInput.value.trim();
-  const p = passInput.value.trim();
-
-  if (!guardado) {
-    msg.textContent = "No existe usuario registrado en este equipo.";
-    return;
+  if (!nombre_usuario || !contrasena) {
+    if (!silencioso && msg) {
+      msg.textContent = "Completa usuario y contraseña.";
+      msg.className = "text-danger text-small";
+    }
+    return false;
   }
 
-  const coincideUsuario =
-    u === guardado.username || u === guardado.correo;
+  try {
+    const respuesta = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre_usuario, contrasena })
+    });
 
-  if (coincideUsuario && p === guardado.password) {
-    establecerSesion(true);
-    msg.textContent = "";
+    const data = await respuesta.json().catch(() => ({}));
 
+    if (!respuesta.ok) {
+      if (!silencioso && msg) {
+        msg.textContent = data.mensaje || "Usuario o contraseña incorrectos.";
+        msg.className = "text-danger text-small";
+      }
+      return false;
+    }
+
+    // Se espera que la API devuelva { usuario: {...} }
+    guardarUsuario(data.usuario || { nombre_usuario });
+
+    if (!silencioso && msg) {
+      msg.textContent = "";
+    }
+
+    actualizarNavAuth();
+
+    // Cerrar modal
     const modalEl = document.getElementById("authModal");
-    if (modalEl && window.bootstrap) {
+    if (!silencioso && modalEl && bootstrap?.Modal?.getInstance) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
 
-    actualizarNavUsuario();
-    actualizarPermisosBlog();
-  } else {
-    msg.textContent = "Usuario o contraseña incorrectos.";
+    if (!silencioso) {
+      window.location.href = "cuenta.html";
+    }
+
+    return true;
+  } catch (err) {
+    console.error(err);
+    if (!silencioso && msg) {
+      msg.textContent = "No se pudo conectar con el servidor (API).";
+      msg.className = "text-danger text-small";
+    }
+    return false;
   }
 }
 
-function logout() {
-  establecerSesion(false);
-  // Mantenemos los datos del usuario para poder volver a iniciar sesión
-  window.location.href = "index.html";
+// REGISTRO (usa solo datos de la tabla Usuario)
+async function register() {
+  const usuarioInput = document.getElementById("registerUser");
+  const passInput    = document.getElementById("registerPass");
+  const pass2Input   = document.getElementById("registerPass2");
+  const msg          = document.getElementById("registerMsg");
+
+  if (!usuarioInput || !passInput || !pass2Input || !msg) return;
+
+  const nombre_usuario = usuarioInput.value.trim();
+  const contrasena     = passInput.value.trim();
+  const contrasena2    = pass2Input.value.trim();
+
+  if (!nombre_usuario || !contrasena || !contrasena2) {
+    msg.textContent = "Completa todos los campos.";
+    msg.className = "text-danger text-small";
+    return;
+  }
+
+  if (contrasena !== contrasena2) {
+    msg.textContent = "Las contraseñas no coinciden.";
+    msg.className = "text-danger text-small";
+    return;
+  }
+
+  try {
+    const respuesta = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre_usuario, contrasena })
+    });
+
+    const data = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      msg.textContent = data.mensaje || "Error registrando usuario.";
+      msg.className = "text-danger text-small";
+      return;
+    }
+
+    // Intentar login automático
+    const ok = await login(nombre_usuario, contrasena, true);
+    if (ok) {
+      msg.textContent = "Cuenta creada correctamente. Redirigiendo a Mi Cuenta...";
+      msg.className = "text-success text-small";
+
+      const modalEl = document.getElementById("authModal");
+      if (modalEl && bootstrap?.Modal?.getInstance) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      }
+
+      window.location.href = "cuenta.html";
+    } else {
+      msg.textContent = "Usuario creado. Inicia sesión con tus credenciales.";
+      msg.className = "text-success text-small";
+    }
+  } catch (err) {
+    console.error(err);
+    msg.textContent = "No se pudo conectar con el servidor (API).";
+    msg.className = "text-danger text-small";
+  }
 }
 
-// ================= NEWSLETTER (SI LO USAS EN INDEX) =================
+// ================= NEWSLETTER =================
 function suscribirNewsletter() {
   const input = document.getElementById("newsletterEmail");
   const msg = document.getElementById("newsletterMsg");
@@ -401,7 +453,7 @@ function iniciarPedido() {
   }
 }
 
-// ================= BLOG =================
+// ================= BLOG (LOCAL) =================
 function obtenerPosts() {
   return leerLS(CLAVE_POSTS, []);
 }
@@ -462,8 +514,7 @@ function renderizarListaPosts(items) {
 
 function actualizarPermisosBlog() {
   const contenedorFormulario = document.getElementById("postFormContainer");
-  const usuario = obtenerUsuario();
-  const logueado = estaLogueado() && usuario;
+  const logueado = estaLogueado();
 
   if (contenedorFormulario) {
     contenedorFormulario.style.display = logueado ? "block" : "none";
@@ -472,7 +523,7 @@ function actualizarPermisosBlog() {
 
 function crearPost() {
   const usuario = obtenerUsuario();
-  const logueado = estaLogueado() && usuario;
+  const logueado = !!usuario;
 
   if (!logueado) {
     alert("Debes iniciar sesión para crear una publicación.");
@@ -488,10 +539,16 @@ function crearPost() {
   if (!titulo || !contenido) return;
 
   const posts = obtenerPosts();
+  const autorNombre =
+    usuario.nombre_usuario ||
+    usuario.username ||
+    usuario.nombre ||
+    "Usuario";
+
   const nuevo = {
     titulo,
     contenido,
-    autor: usuario.username || usuario.nombre || "Usuario",
+    autor: autorNombre,
     fecha: new Date().toLocaleString(),
   };
 
@@ -557,30 +614,32 @@ function iniciarBlog() {
   mostrarPosts();
 }
 
-// ================= PERFIL / CUENTA =================
+// ================= PERFIL / CUENTA (BÁSICO) =================
 function iniciarPerfil() {
   const caja = document.getElementById("profileBox");
   if (!caja) return;
 
   const usuario = obtenerUsuario();
-  const logueado = estaLogueado() && usuario;
 
   const nombreEl = document.getElementById("profileUsername");
   const correoEl = document.getElementById("profileEmail");
   const postsEl = document.getElementById("profilePostsCount");
   const temaEl = document.getElementById("profileTheme");
 
-  if (!logueado) {
+  if (!usuario) {
     caja.innerHTML =
       '<div class="alert alert-warning">Debes iniciar sesión para ver tu perfil.</div>';
     return;
   }
 
   const posts = obtenerPosts().filter(
-    (p) => p.autor === (usuario.username || usuario.nombre)
+    (p) =>
+      p.autor ===
+      (usuario.nombre_usuario || usuario.username || usuario.nombre)
   );
 
-  if (nombreEl) nombreEl.textContent = usuario.username || usuario.nombre;
+  if (nombreEl) nombreEl.textContent =
+    usuario.nombre_usuario || usuario.username || usuario.nombre || "";
   if (correoEl) correoEl.textContent = usuario.correo || "";
   if (postsEl) postsEl.textContent = posts.length.toString();
   if (temaEl)
@@ -591,9 +650,8 @@ function iniciarPerfil() {
 // ================= INICIALIZACIÓN GLOBAL =================
 document.addEventListener("DOMContentLoaded", () => {
   iniciarTema();
-  actualizarNavUsuario();
+  actualizarNavAuth();
   actualizarContadorCarrito();
-
   iniciarComprar();
   iniciarDatos();
   iniciarPedido();

@@ -745,12 +745,12 @@
             >
               <form onsubmit="event.preventDefault(); login();">
                 <div class="mb-3">
-                  <label for="loginUser" class="form-label">Usuario o correo</label>
+                  <label for="loginUser" class="form-label">Nombre de usuario</label>
                   <input
                     type="text"
                     class="form-control"
                     id="loginUser"
-                    placeholder="tucorreo@ejemplo.com"
+                    placeholder="tu_usuario"
                     required
                   />
                 </div>
@@ -764,11 +764,6 @@
                     required
                   />
                 </div>
-                <div class="mb-2 text-end">
-                  <a href="#" class="text-decoration-none text-small">
-                    ¿Olvidaste tu contraseña?
-                  </a>
-                </div>
                 <div id="loginMsg" class="text-danger text-small mb-2"></div>
                 <button type="submit" class="btn btn-hu-accent w-100">
                   <i class="bi bi-box-arrow-in-right me-1"></i>
@@ -777,7 +772,7 @@
               </form>
             </div>
 
-            <!-- REGISTRO -->
+            <!-- REGISTRO (usa solo datos de Usuario) -->
             <div
               class="tab-pane fade"
               id="register-pane"
@@ -787,22 +782,12 @@
             >
               <form onsubmit="event.preventDefault(); register();">
                 <div class="mb-3">
-                  <label for="registerName" class="form-label">Nombre completo</label>
+                  <label for="registerUser" class="form-label">Nombre de usuario</label>
                   <input
                     type="text"
                     class="form-control"
-                    id="registerName"
-                    placeholder="Nombre y apellido"
-                    required
-                  />
-                </div>
-                <div class="mb-3">
-                  <label for="registerEmail" class="form-label">Correo</label>
-                  <input
-                    type="email"
-                    class="form-control"
-                    id="registerEmail"
-                    placeholder="correo@ejemplo.com"
+                    id="registerUser"
+                    placeholder="tu_usuario"
                     required
                   />
                 </div>
@@ -837,12 +822,13 @@
         </div>
         <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
           <small class="text-muted">
-            Tus datos de acceso se guardan solo en este equipo (localStorage).
+            Tus datos de acceso se guardan en el servidor Healthy U.
           </small>
         </div>
       </div>
     </div>
   </div>
+
 
   <!-- ================= FOOTER ================= -->
   <footer class="footer py-3 pie-pagina">
