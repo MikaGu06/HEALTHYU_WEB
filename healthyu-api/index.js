@@ -1,32 +1,22 @@
-// healthyu-api/index.js
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const apiRoutes = require("./routes/index");
+const blogRoutes = require("./routes/blog");
 
 const app = express();
 const PORT = 4000;
 
-// ────────────────────────────
-// Middlewares
-// ────────────────────────────
 app.use(cors());
 app.use(express.json());
 
-// Servir el frontend (carpeta public)
+// servir frontend si lo necesitas
 app.use(express.static(path.join(__dirname, "public")));
 
-// ────────────────────────────
-// Rutas API
-// ────────────────────────────
+// rutas API principales
+app.use("/api", apiRoutes);        // /api/auth/..., /api/pacientes/...
+app.use("/api/blog", blogRoutes);  // /api/blog/listar, /api/blog/crear
 
-const apiRoutes = require("./routes/index");
-
-
-app.use("/api", apiRoutes);
-
-// ────────────────────────────
-// Arrancar servidor
-// ────────────────────────────
 app.listen(PORT, () => {
   console.log(`HealthyU API escuchando en http://localhost:${PORT}`);
 });
