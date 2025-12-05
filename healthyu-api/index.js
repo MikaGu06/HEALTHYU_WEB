@@ -9,11 +9,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const authRoutes = require("./routes/auth");
+const apiRoutes = require("./routes/index");
 const pacientesRoutes = require("./routes/pacientes");
 const blogRoutes = require("./routes/blog");
 
-app.use("/api/auth", authRoutes);
+// Rutas principales
+app.use("/api", apiRoutes);           // -> /api/auth/login, /api/pacientes/datos, etc
 app.use("/api/pacientes", pacientesRoutes);
 app.use("/api/blog", blogRoutes);
 

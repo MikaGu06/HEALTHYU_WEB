@@ -1,105 +1,182 @@
-// =================== PANEL DE GRAFICOS (grafico.html) ===================
-async function iniciarCuentaPaciente() {
-  const panel = document.getElementById("panelPaciente");
-  if (!panel) return; // No estamos en grafico.html
+// grafico.js
+// Usa API_BASE y obtenerUsuario() definidos en script.js
 
+// ================== CARGAR PACIENTE DEL USUARIO LOGUEADO ==================
+async function cargarPacienteActual() {
   const usuario = obtenerUsuario();
+
   if (!usuario) {
+    // Si alguien entra directo sin login → lo mandamos al inicio
     window.location.href = "index.html";
-    return;
+    return null;
   }
 
-  const username = usuario.nombre_usuario;
-
-  // Mostrar nombre rápido
-  document.getElementById("pacienteUsername").textContent = "@" + username;
-
-  if (usuario.nombre_completo)
-    document.getElementById("pacienteNombre").textContent = usuario.nombre_completo;
-
-  // Iniciales avatar
-  const ini = (usuario.nombre_completo || username)
-    .split(" ")
-    .map(p => p[0].toUpperCase())
-    .slice(0, 2)
-    .join("");
-
-  document.getElementById("avatarIniciales").textContent = ini;
-
-  // ---- CONSULTAR SIGNOS DEL PACIENTE ----
-  const r = await fetch(API_BASE + "/signos/paciente/" + username);
-  const data = await r.json();
-  const signos = data.signos || [];
-
-  const info = document.getElementById("infoCantidadSignos");
-  const zona = document.getElementById("zonaGraficos");
-  const alerta = document.getElementById("sinSignosAlert");
-
-  if (!signos.length) {
-    alerta.classList.remove("d-none");
-    zona.classList.add("d-none");
-    info.textContent = "No hay registros aún.";
-    return;
+  // La API de pacientes recibe id_usuario
+  const idUsuario = usuario.id_usuario;
+  if (!idUsuario) {
+    console.error("El usuario guardado no tiene id_usuario:", usuario);
+    return null;
   }
 
-  info.textContent = "Registros cargados: " + signos.length;
+  try {
+    const resp = await fetch(
+      `${API_BASE}/pacientes/por-usuario/${encodeURIComponent(idUsuario)}`
+    );
 
-  const labels = signos.map(s => s.fecha + " " + (s.hora || ""));
-  const ritmo = signos.map(s => s.ritmo_cardiaco);
-  const temp = signos.map(s => s.temperatura);
-  const oxi = signos.map(s => s.oxigenacion);
+    if (!resp.ok) {
+      console.error("Error al obtener paciente:", await resp.text());
+      return null;
+    }
 
-  // Colores Healthy U
-  const root = getComputedStyle(document.documentElement);
-  const c1 = root.getPropertyValue("--hu-primario").trim();
-  const c2 = root.getPropertyValue("--hu-secundario").trim();
-  const c3 = root.getPropertyValue("--hu-acento").trim();
+    const data = await resp.json();
+    // según tu backend: { paciente: { ... } }
+    return { usuario, paciente: data.paciente };
+  } catch (err) {
+    console.error("Error de red obteniendo paciente:", err);
+    return null;
+  }
+}
 
-  // ------ GRAFICO RITMO ------
-  new Chart(document.getElementById("chartRitmo"), {
+// ================== RELLENAR TARJETA SUPERIOR ==================
+function rellenarTarjetaPaciente(usuario, paciente) {
+  const nombreEl   = document.getElementById("pacienteNombre");
+  const userEl     = document.getElementById("pacienteUsername");
+  const correoEl   = document.getElementById("pacienteCorreo");
+  const avatarBox  = document.getElementById("avatarBox");
+  const avatarText = document.getElementById("avatarIniciales");
+
+  if (nombreEl) {
+    nombreEl.textContent =
+      (paciente && paciente.nombre_completo) ||
+      usuario.nombre_usuario ||
+      "Paciente sin nombre";
+  }
+
+  if (userEl) {
+    userEl.textContent = "@" + (usuario.nombre_usuario || "usuario");
+  }
+
+  if (correoEl) {
+    correoEl.textContent = (paciente && paciente.correo) || "Sin correo";
+  }
+
+  // Foto de perfil si viene en base64 (campo foto_base64 del backend)
+  if (avatarBox) {
+    if (paciente && paciente.foto_base64) {
+      // Reemplazamos las iniciales por la imagen
+      avatarBox.innerHTML = "";
+      const img = document.createElement("img");
+      img.src = `data:image/jpeg;base64,${paciente.foto_base64}`;
+      img.alt = "Foto de perfil";
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
+      img.style.borderRadius = "50%";
+      avatarBox.appendChild(img);
+    } else if (avatarText) {
+      // Sin foto → iniciales
+      const base =
+        (paciente && paciente.nombre_completo) ||
+        usuario.nombre_usuario ||
+        "HU";
+      const partes = base.trim().split(" ");
+      let ini = "";
+      if (partes[0]) ini += partes[0][0].toUpperCase();
+      if (partes[1]) ini += partes[1][0].toUpperCase();
+      avatarText.textContent = ini || "HU";
+    }
+  }
+}
+
+// ==================== GRÁFICOS ====================
+
+function crearGraficoLineal(ctx, label, labels, data, color) {
+  if (!ctx || !window.Chart) return;
+
+  new Chart(ctx, {
     type: "line",
     data: {
       labels,
-      datasets: [{
-        label: "Ritmo cardíaco",
-        data: ritmo,
-        borderColor: c3,
-        backgroundColor: c3 + "33",
-        tension: 0.3,
-        fill: true
-      }]
-    }
-  });
-
-  // ------ GRAFICO TEMPERATURA ------
-  new Chart(document.getElementById("chartTemp"), {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "Temperatura",
-        data: temp,
-        borderColor: c1,
-        backgroundColor: c1 + "33",
-        tension: 0.3,
-        fill: true
-      }]
-    }
-  });
-
-  // ------ GRAFICO OXIGENACION ------
-  new Chart(document.getElementById("chartOxi"), {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "Oxigenación",
-        data: oxi,
-        borderColor: c2,
-        backgroundColor: c2 + "33",
-        tension: 0.3,
-        fill: true
-      }]
-    }
+      datasets: [
+        {
+          label,
+          data,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 3,
+          borderColor: color,
+          backgroundColor: color + "33",
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { autoSkip: true, maxTicksLimit: 6 } },
+      },
+    },
   });
 }
+
+async function cargarSignosYGraficar(ci_paciente) {
+  if (!ci_paciente) return;
+
+  try {
+    // ⚠️ Ajusta esta ruta al endpoint real que tengas para signos:
+    const resp = await fetch(
+      `${API_BASE}/signos/paciente/${encodeURIComponent(ci_paciente)}`
+    );
+
+    if (!resp.ok) {
+      console.warn("No se pudieron obtener signos:", await resp.text());
+      return;
+    }
+
+    const data = await resp.json();
+    const signos = data.signos || [];
+    if (!signos.length) return;
+
+    const labels = signos.map((s) => s.fecha); // ajusta al campo exacto que tengas
+    const ritmo = signos.map((s) => s.ritmo_cardiaco ?? s.ritmo ?? null);
+    const temp  = signos.map((s) => s.temperatura ?? null);
+    const oxi   = signos.map((s) => s.oxigenacion ?? null);
+
+    const rootStyles = getComputedStyle(document.documentElement);
+    const c1 =
+      rootStyles.getPropertyValue("--hu-primario").trim() || "#002454";
+    const c2 =
+      rootStyles.getPropertyValue("--hu-secundario").trim() || "#624695";
+    const c3 =
+      rootStyles.getPropertyValue("--hu-acento").trim() || "#8873f0";
+
+    const ctxRitmo = document.getElementById("chartRitmo");
+    const ctxTemp  = document.getElementById("chartTemp");
+    const ctxOxi   = document.getElementById("chartOxi");
+
+    crearGraficoLineal(ctxRitmo, "Ritmo cardíaco (bpm)", labels, ritmo, c3);
+    crearGraficoLineal(ctxTemp, "Temperatura (°C)", labels, temp, c1);
+    crearGraficoLineal(ctxOxi, "Oxigenación (%)", labels, oxi, c2);
+  } catch (err) {
+    console.error("Error cargando signos:", err);
+  }
+}
+
+// ==================== INICIALIZACIÓN ====================
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // Solo ejecutamos si estamos en grafico.html (existe la tarjeta)
+  const tarjeta = document.getElementById("pacienteNombre");
+  if (!tarjeta) return;
+
+  const data = await cargarPacienteActual();
+  if (!data) return;
+
+  const { usuario, paciente } = data;
+  rellenarTarjetaPaciente(usuario, paciente);
+
+  if (paciente && paciente.ci_paciente) {
+    cargarSignosYGraficar(paciente.ci_paciente);
+  }
+});
