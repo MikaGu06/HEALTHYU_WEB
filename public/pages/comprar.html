@@ -27,10 +27,10 @@
   >
     <div class="container">
 
-      <!-- Logo -->
+      <!-- Solo logo -->
       <a class="navbar-brand" href="index.html">
         <img
-          src="../IMAGENES/logo_horizontal.png"
+          src="../../IMAGENES/pagina/logo_horizontal.png"
           alt="Healthy U"
           style="max-height: 40px"
         />
@@ -78,9 +78,9 @@
             </a>
           </li>
 
-          <!-- ⭐ PRECIOS ACTIVO -->
+          <!--  NUEVO: PRECIOS -->
           <li class="nav-item">
-            <a class="nav-link active" href="comprar.html" style="color: var(--text-main);">
+            <a class="nav-link" href="comprar.html" style="color: var(--text-main);">
               <i class="bi bi-tags me-1"></i>Precios
             </a>
           </li>
@@ -91,7 +91,7 @@
           class="d-flex align-items-center ms-lg-4 mt-3 mt-lg-0 gap-2 border-start ps-lg-4 pt-2 pt-lg-0 zona-derecha-nav"
           style="border-color: var(--border-soft) !important;"
         >
-          <!-- Botón Pedido -->
+          <!-- Botón Pedido (oscuro) -->
           <a href="pedido.html" class="btn btn-dark btn-sm boton-pedido">
             <i class="bi bi-cart3 me-1"></i>
             Pedido
@@ -104,7 +104,7 @@
             </span>
           </a>
 
-          <!-- Botón Login / Mi cuenta (lo controla script.js) -->
+          <!-- Botón Login / Registro (JS lo convierte en "Mi Cuenta" si está logueado) -->
           <button
             id="btnLoginNav"
             type="button"
@@ -114,16 +114,6 @@
           >
             <i class="bi bi-box-arrow-in-right me-1"></i>
             Acceder
-          </button>
-
-          <!-- Botón cambio de tema -->
-          <button
-            id="themeToggle"
-            type="button"
-            class="btn btn-outline-secondary btn-sm boton-tema"
-            title="Cambiar tema"
-          >
-            <i class="bi bi-moon-stars"></i>
           </button>
         </div>
       </div>
